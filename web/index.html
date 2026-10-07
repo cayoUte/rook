@@ -1,0 +1,1786 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06080f">
+<meta name="description" content="Talleres de programación en vivo en aulas de 5: 2 horas, pantallas compartidas y un producto que funciona.">
+<meta property="og:title" content="Aula5: 5 personas, 2 horas, 1 producto que funciona">
+<meta property="og:description" content="Talleres de programación en vivo en aulas de 5: 2 horas, pantallas compartidas y un producto que funciona.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="og.png">
+<title>Aula5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&amp;family=Martian+Mono:wdth,wght@87.5..112.5,400..600&amp;family=Onest:wght@400..600&amp;display=swap">
+<style>
+/* Diseño: una torre 3D de talleres fija al fondo (nivel 1 abajo, nivel 3 arriba) y el contenido en paneles de tinta que corren encima, con ventanas para tocar la torre. Tema oscuro único, a propósito. */
+:root {
+  color-scheme: dark;
+  --ink: #06080f;
+  --panel: rgba(10, 13, 26, 0.9);
+  --panel-2: rgba(16, 20, 38, 0.94);
+  --line: rgba(163, 178, 214, 0.16);
+  --line-2: rgba(163, 178, 214, 0.32);
+  --text: #eef1f8;
+  --muted: #a3adc4;
+  --faint: #737e98;
+  --caret: #f7f0e3;
+  --caret-ink: #0f1221;
+  --ok: #7ee2a8;
+  --fund: #7cc8ff; --py: #ffd166; --js: #ff8fd8; --java: #ffa36b; --datos: #6ee7b7; --ops: #b9a5ff; --integ: #fff3c4;
+  --f-display: "Bricolage Grotesque", "Avenir Next Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Onest", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "Martian Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 16px;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--ink); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--ink); color: var(--text);
+  font: 400 1rem/1.55 var(--f-body);
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+body.hoja-abierta { overflow: hidden; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--caret); outline-offset: 3px; border-radius: 6px; }
+
+/* ---------- escena ---------- */
+#escena { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100lvh; display: block; z-index: 0; touch-action: pan-y; cursor: grab; }
+#escena.arrastrando { cursor: grabbing; }
+.fondo-plano { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: none;
+  background:
+    radial-gradient(40rem 30rem at 80% 20%, rgba(185,165,255,0.16), transparent 60%),
+    radial-gradient(36rem 28rem at 10% 70%, rgba(124,200,255,0.14), transparent 60%),
+    radial-gradient(30rem 24rem at 70% 90%, rgba(255,143,216,0.10), transparent 60%), var(--ink); }
+body.sin3d .fondo-plano { display: block; }
+body.sin3d #escena, body.sin3d .etiquetas, body.sin3d .pista { display: none; }
+.etiquetas { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+.etq {
+  position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; gap: 6px;
+  font: 500 10px/1 var(--f-mono); color: var(--text); white-space: nowrap;
+  padding: 5px 8px 5px 7px; border-radius: 7px; background: rgba(6, 8, 15, 0.72); border: 1px solid var(--line);
+  opacity: 0; transition: opacity .25s; will-change: transform, opacity;
+}
+.etq i { width: 7px; height: 7px; border-radius: 2px; background: var(--c); flex: none; }
+.etq b { color: var(--c); font-weight: 600; }
+
+/* ---------- barra ---------- */
+.barra {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 6;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 12px;
+  background: linear-gradient(rgba(6, 8, 15, 0.92), rgba(6, 8, 15, 0.55) 70%, rgba(6, 8, 15, 0));
+}
+.marca { display: inline-flex; align-items: center; gap: 2px; font: 600 1rem/1 var(--f-mono); letter-spacing: -0.02em; text-decoration: none; }
+.marca .cursor { width: 0.55em; height: 1.15em; background: var(--caret); margin-left: 3px; animation: parpadeo 1.1s steps(1) infinite; }
+.barra nav { display: none; gap: 22px; font-size: 0.9rem; }
+.barra nav a { text-decoration: none; color: var(--muted); }
+.barra nav a:hover { color: var(--text); }
+
+/* ---------- botones y chips ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 48px; padding: 0 20px; border-radius: 12px; border: 1px solid transparent;
+  font: 600 0.95rem/1 var(--f-body); text-decoration: none; cursor: pointer; white-space: nowrap;
+  transition: transform .15s ease, background-color .2s, border-color .2s;
+}
+.btn:active { transform: translateY(1px); }
+.btn-caret { background: var(--caret); color: var(--caret-ink); }
+.btn-caret::after { content: ""; width: 7px; height: 1.05em; background: currentColor; animation: parpadeo 1.1s steps(1) infinite; }
+.btn-caret:hover { background: #fffaf0; }
+.btn-ghost { background: rgba(6, 8, 15, 0.6); color: var(--text); border-color: var(--line-2); }
+.btn-ghost:hover { border-color: var(--text); }
+.btn-chico { min-height: 40px; padding: 0 14px; font-size: 0.88rem; border-radius: 10px; }
+.btn-chico.btn-caret::after { width: 6px; }
+@keyframes parpadeo { 50% { opacity: 0; } }
+
+.chip {
+  --c: var(--fund);
+  display: inline-flex; align-items: center; gap: 7px; min-height: 30px;
+  font: 500 0.68rem/1.2 var(--f-mono); letter-spacing: 0.01em; color: var(--text);
+  padding: 6px 10px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+  background: color-mix(in srgb, var(--c) 12%, transparent);
+}
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--c); flex: none; }
+.chip-plano { --c: var(--faint); }
+.chip-plano::before { display: none; }
+
+/* ---------- estructura ---------- */
+main { position: relative; z-index: 2; padding-inline: 16px; pointer-events: none; }
+main section, main .panel, main .carrusel, main .filtros { pointer-events: none; }
+main .panel, main .tarjeta, main .carrusel, main .filtros, main a, main button, main .hero-texto { pointer-events: auto; }
+.eyebrow { margin: 0 0 10px; font: 500 0.7rem/1.3 var(--f-mono); color: var(--faint); letter-spacing: 0.01em; }
+h1, h2, h3, h4 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-weight: 800; font-stretch: 78%; font-size: clamp(2.5rem, 11vw, 4.7rem); line-height: 0.96; letter-spacing: -0.02em; }
+h1 .n { font-family: var(--f-mono); font-weight: 600; font-stretch: 100%; font-size: 0.78em; color: var(--caret); letter-spacing: -0.04em; }
+h2 { font-weight: 750; font-stretch: 84%; font-size: clamp(1.8rem, 7.4vw, 2.6rem); line-height: 1.02; letter-spacing: -0.01em; }
+h3 { font-weight: 750; font-stretch: 86%; font-size: 1.7rem; line-height: 1.05; }
+h4 { font-weight: 700; font-stretch: 90%; font-size: 1.16rem; line-height: 1.15; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+  padding: 20px; display: grid; gap: 14px; max-width: 36rem;
+}
+.ventana { height: 40svh; min-height: 220px; }
+.ventana-alta { height: 52svh; }
+
+/* ---------- hero ---------- */
+.hero { padding-top: calc(env(safe-area-inset-top, 0px) + 92px); display: grid; gap: 18px; max-width: 36rem; }
+.hero-texto { display: grid; gap: 16px; text-shadow: 0 2px 24px rgba(6, 8, 15, 0.9); }
+.hero .lead { font-size: 1.06rem; color: #d8ddea; max-width: 30rem; }
+.cta-fila { display: flex; flex-wrap: wrap; gap: 10px; }
+.datos-hero { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 4px 0 0; padding: 0; list-style: none; font: 500 0.72rem/1.4 var(--f-mono); color: var(--muted); }
+.datos-hero b { color: var(--text); font-weight: 600; }
+.pista { display: inline-flex; align-items: center; gap: 10px; font: 500 0.68rem/1.4 var(--f-mono); color: var(--faint); }
+.pista::before { content: ""; width: 26px; height: 1px; background: var(--line-2); }
+
+/* ---------- cómo funciona ---------- */
+.pasos { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; counter-reset: paso; }
+.pasos li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; counter-increment: paso; color: var(--muted); }
+.pasos li::before { content: counter(paso); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line-2); font: 600 0.8rem/1 var(--f-mono); color: var(--caret); }
+.pasos b { color: var(--text); font-weight: 600; }
+
+/* ---------- catálogo ---------- */
+.filtros { display: flex; gap: 8px; overflow-x: auto; margin-inline: -16px; padding: 4px 16px 10px; scrollbar-width: none; }
+.filtros::-webkit-scrollbar { display: none; }
+.filtro { flex: none; cursor: pointer; }
+.filtro[aria-pressed="true"] { background: var(--c); color: var(--caret-ink); border-color: var(--c); }
+.filtro[aria-pressed="true"]::before { background: var(--caret-ink); }
+.nivel { display: grid; gap: 14px; }
+.nivel-cab .precio-nivel { font: 500 0.74rem/1.4 var(--f-mono); color: var(--caret); }
+.carrusel {
+  display: grid; grid-auto-flow: column; grid-auto-columns: min(80vw, 300px); gap: 12px;
+  overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+  margin-inline: -16px; padding: 2px 16px 12px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent;
+}
+.tarjeta {
+  --c: var(--fund);
+  scroll-snap-align: start; position: relative; display: grid; grid-template-rows: auto auto 1fr auto; gap: 10px;
+  min-height: 210px; padding: 16px; border-radius: var(--r); text-align: left; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font: inherit;
+  transition: border-color .2s, transform .2s;
+}
+.tarjeta:hover { border-color: color-mix(in srgb, var(--c) 70%, transparent); transform: translateY(-2px); }
+.tarjeta[hidden] { display: none !important; }
+.t-area { display: flex; align-items: center; gap: 8px; font: 500 0.66rem/1.2 var(--f-mono); color: var(--c); }
+.t-area::before { content: ""; width: 9px; height: 9px; border-radius: 3px; background: var(--c); box-shadow: 0 0 12px var(--c); }
+.t-nombre { display: block; font: 700 1.16rem/1.15 var(--f-display); font-stretch: 90%; text-wrap: balance; color: var(--text); }
+.t-gancho { display: block; color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+body.hoja-abierta main, body.hoja-abierta .etq-nivel { opacity: 0; pointer-events: none; }
+main { transition: opacity .3s; }
+.t-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 500 0.66rem/1.2 var(--f-mono); color: var(--muted); padding-top: 10px; border-top: 1px solid var(--line); }
+.t-pie b { color: var(--text); font-weight: 600; }
+.estado { font: 500 0.66rem/1.2 var(--f-mono); padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line-2); color: var(--muted); white-space: nowrap; }
+.estado[data-e="disponible"] { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+.estado[data-e="pronto"] { color: var(--caret); }
+.sin-resultados { color: var(--muted); font-size: 0.9rem; }
+
+/* ---------- rutas ---------- */
+.rutas { display: grid; gap: 12px; max-width: 36rem; }
+.ruta {
+  display: grid; gap: 12px; padding: 16px; border-radius: var(--r); text-align: left; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font: inherit; transition: border-color .2s;
+}
+.ruta:hover { border-color: var(--line-2); }
+.ruta-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ruta-meta { font: 500 0.66rem/1.2 var(--f-mono); color: var(--faint); white-space: nowrap; }
+.ruta .t-nombre { font-size: 1.3rem; }
+.ruta-hilo { display: flex; align-items: center; gap: 0; }
+.ruta-hilo i { width: 12px; height: 12px; border-radius: 4px; background: var(--c); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent); flex: none; }
+.ruta-hilo i + i { margin-left: 16px; position: relative; }
+.ruta-hilo i + i::before { content: ""; position: absolute; right: 100%; top: 50%; width: 16px; height: 1px; background: var(--line-2); }
+.ruta-hilo .fin { width: 14px; height: 14px; border-radius: 50%; background: var(--integ); }
+.ruta-precio { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; font: 500 0.72rem/1.3 var(--f-mono); color: var(--muted); }
+.ruta-precio b { color: var(--text); font-weight: 600; font-size: 0.86rem; }
+.tachado { text-decoration: line-through; color: var(--faint); }
+
+/* ---------- calculadora ---------- */
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px; border-radius: 12px; background: rgba(6, 8, 15, 0.7); border: 1px solid var(--line); }
+.seg button { min-height: 44px; border-radius: 9px; border: 0; background: transparent; color: var(--muted); font: 500 0.72rem/1.2 var(--f-mono); cursor: pointer; }
+.seg button[aria-checked="true"] { background: var(--caret); color: var(--caret-ink); font-weight: 600; }
+.asientos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.asiento { aspect-ratio: 1; max-width: 100%; display: grid; place-items: center; gap: 0; border-radius: 12px; border: 1px dashed var(--line-2); background: transparent; color: var(--faint); cursor: pointer; font: 500 0.66rem/1 var(--f-mono); padding: 6px; }
+.asiento svg { width: 58%; height: auto; }
+.asiento.lleno { border-style: solid; border-color: color-mix(in srgb, var(--caret) 60%, transparent); background: rgba(247, 240, 227, 0.08); color: var(--caret); }
+.resultado { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.resultado .grande { font: 800 clamp(3rem, 16vw, 4.4rem)/0.9 var(--f-display); font-stretch: 80%; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.resultado span { color: var(--muted); }
+.reparto { font: 500 0.72rem/1.5 var(--f-mono); color: var(--muted); }
+
+/* ---------- tutorías ---------- */
+.formatos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.formato { padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: rgba(6, 8, 15, 0.55); display: grid; gap: 6px; align-content: start; }
+.formato .f-precio { font: 700 1.5rem/1 var(--f-display); font-stretch: 84%; }
+.formato .f-dur { font: 500 0.64rem/1.3 var(--f-mono); color: var(--faint); }
+.formato p { font-size: 0.84rem; color: var(--muted); line-height: 1.4; }
+.materias { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.nota { font-size: 0.85rem; color: var(--muted); border-left: 2px solid var(--line-2); padding-left: 12px; }
+
+/* ---------- final ---------- */
+.numero { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font: 500 0.8rem/1.4 var(--f-mono); color: var(--muted); }
+.numero span { color: var(--text); user-select: all; }
+.pie { padding: 40px 0 calc(env(safe-area-inset-bottom, 0px) + 32px); font: 500 0.66rem/1.6 var(--f-mono); color: var(--faint); max-width: 36rem; pointer-events: auto; }
+
+/* ---------- hoja de detalle ---------- */
+.velo { position: fixed; inset: 0; z-index: 7; background: linear-gradient(rgba(6,8,15,0) 30%, rgba(6,8,15,0.55)); pointer-events: none; opacity: 0; transition: opacity .3s; }
+body.hoja-abierta .velo { opacity: 1; }
+.hoja {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
+  max-height: 54svh; overflow-y: auto; overscroll-behavior: contain;
+  background: rgba(9, 12, 24, 0.97); border: 1px solid var(--line-2); border-bottom: 0; border-radius: 22px 22px 0 0;
+  padding: 10px 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
+  display: grid; gap: 14px; transform: translateY(0); transition: transform .35s cubic-bezier(.2,.8,.2,1);
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5);
+}
+.hoja.entrando { transform: translateY(105%); }
+.hoja-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: sticky; top: -10px; padding-top: 8px; background: inherit; z-index: 1; }
+.hoja-top .asa { position: absolute; left: 50%; top: 0; width: 44px; height: 4px; margin-left: -22px; border-radius: 4px; background: var(--line-2); }
+.icono-btn { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; border-radius: 12px; border: 1px solid var(--line-2); background: transparent; color: var(--text); cursor: pointer; font: 500 0.72rem/1 var(--f-mono); padding: 0 12px; gap: 6px; }
+.icono-btn:disabled { opacity: 0.35; cursor: default; }
+.hoja-nav { display: flex; align-items: center; gap: 8px; font: 500 0.66rem/1 var(--f-mono); color: var(--faint); }
+.hoja-cuerpo { display: grid; gap: 14px; }
+.chips-fila { display: flex; flex-wrap: wrap; gap: 6px; }
+.gancho { font-size: 1.02rem; color: #d9deea; }
+.ficha { margin: 0; display: grid; gap: 10px; }
+.ficha div { display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.ficha dt { font: 500 0.66rem/1.5 var(--f-mono); color: var(--faint); }
+.ficha dd { margin: 0; font-size: 0.93rem; color: var(--text); }
+.ficha dd b { font-weight: 600; }
+.sub { font: 500 0.66rem/1.3 var(--f-mono); color: var(--faint); }
+.conecta { display: flex; flex-wrap: wrap; gap: 6px; }
+.conecta .chip { cursor: pointer; background: transparent; }
+.conecta .chip:hover { background: color-mix(in srgb, var(--c) 18%, transparent); }
+.lista-ruta { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: pr; }
+.lista-ruta li { --c: var(--fund); counter-increment: pr; display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; position: relative; padding: 6px 0; }
+.lista-ruta li::before { content: counter(pr); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--c) 16%, transparent); border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); font: 600 0.72rem/1 var(--f-mono); color: var(--c); position: relative; z-index: 1; }
+.lista-ruta li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 36px; bottom: -6px; width: 1px; background: var(--line-2); }
+.lista-ruta button { background: none; border: 0; padding: 4px 0; color: var(--text); font: 500 0.95rem/1.3 var(--f-body); text-align: left; cursor: pointer; }
+.lista-ruta button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.lista-ruta .p { font: 500 0.7rem/1 var(--f-mono); color: var(--faint); }
+.lista-ruta li.meta { --c: var(--integ); }
+.lista-ruta li.meta::before { content: "★"; }
+.precio-caja { display: grid; gap: 6px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: rgba(6, 8, 15, 0.55); }
+.precio-caja .linea { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font: 500 0.72rem/1.4 var(--f-mono); color: var(--muted); }
+.precio-caja .linea b { font: 700 1.5rem/1 var(--f-display); font-stretch: 84%; color: var(--text); }
+.aviso { font-size: 0.8rem; color: var(--faint); }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); z-index: 20; transform: translate(-50%, 20px); opacity: 0; transition: .25s; background: var(--caret); color: var(--caret-ink); padding: 10px 14px; border-radius: 10px; font: 600 0.8rem/1.2 var(--f-body); pointer-events: none; }
+.toast.ver { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- pantallas anchas ---------- */
+@media (min-width: 720px) {
+  .barra { padding-inline: 28px; }
+  .barra nav { display: flex; }
+  main { padding-inline: 28px; }
+  .filtros { margin-inline: 0; padding-inline: 0; flex-wrap: wrap; overflow: visible; }
+}
+@media (min-width: 980px) {
+  main { max-width: 540px; margin-left: max(28px, 5vw); padding-inline: 0; }
+  .carrusel { grid-auto-flow: row; grid-template-columns: 1fr 1fr; grid-auto-columns: auto; overflow: visible; margin-inline: 0; padding-inline: 0; }
+  .ventana { height: 34vh; }
+  .hoja { left: auto; top: 0; width: 440px; max-height: none; border-radius: 0; border-bottom: 1px solid var(--line-2); border-right: 0; padding: 18px 22px 24px; align-content: start; }
+  .hoja.entrando { transform: translateX(105%); }
+  .hoja-top .asa { display: none; }
+  .velo { background: linear-gradient(90deg, rgba(6,8,15,0) 50%, rgba(6,8,15,0.5)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+</style>
+</head>
+<body>
+
+<canvas id="escena" aria-hidden="true"></canvas>
+<div class="fondo-plano" aria-hidden="true"></div>
+<div class="etiquetas" id="etiquetas" aria-hidden="true"></div>
+
+<header class="barra">
+  <a class="marca" href="#inicio" aria-label="Aula5, inicio"><span>Aula5</span><span class="cursor" aria-hidden="true"></span></a>
+  <nav aria-label="Secciones"><a href="#talleres">Talleres</a><a href="#rutas">Rutas</a><a href="#precio">Precios</a><a href="#tutorias">Tutorías</a></nav>
+  <a class="btn btn-caret btn-chico" data-link="discord" href="#unete">Reservar</a>
+</header>
+
+<main id="contenido">
+  <section id="inicio" class="hero" data-cam="hero">
+    <div class="hero-texto">
+      <p class="eyebrow">// talleres de programación en vivo, por Discord</p>
+      <h1><span class="n">5</span> personas. <span class="n">2</span> horas. <span class="n">1</span> producto que funciona.</h1>
+      <p class="lead">Programas compartiendo pantalla y te llevas una pieza real para tu GitHub.</p>
+      <div class="cta-fila"><a class="btn btn-caret" href="#talleres">Ver talleres</a><a class="btn btn-ghost" href="#rutas">Ver rutas</a></div>
+      <ul class="datos-hero"><li><b>30</b> talleres</li><li><b>6</b> rutas</li><li>desde <b>$2</b> por persona</li></ul>
+      <p class="pista">Arrastra la torre para girarla · toca un punto para abrir su taller</p>
+    </div>
+    <div class="ventana ventana-alta"></div>
+  </section>
+
+  <section id="como" data-cam="como">
+    <div class="panel">
+      <p class="eyebrow">// cómo funciona</p>
+      <h2>Paga el aula, no el asiento</h2>
+      <p class="muted">Explico lo esencial y todos construyen a la vez. Cada producto se conecta con los de otros talleres: así se arma la torre que ves.</p>
+      <ol class="pasos">
+        <li><span><b>Arma tu aula.</b> Hasta 5 personas pagan un solo precio: mientras más son, menos paga cada uno.</span></li>
+        <li><span><b>Programen en vivo.</b> 2 horas en Discord con pantallas compartidas. Si alguien se traba, se resuelve ahí mismo.</span></li>
+        <li><span><b>Llévate algo que funciona.</b> Tu pieza queda en tu GitHub y se conecta con las de otros talleres.</span></li>
+      </ol>
+    </div>
+    <div class="ventana"></div>
+  </section>
+
+  <section id="talleres" aria-labelledby="t-catalogo">
+    <div class="panel">
+      <p class="eyebrow">// catálogo · 30 talleres en 3 niveles</p>
+      <h2 id="t-catalogo">Elige por dónde empezar</h2>
+      <p class="muted">Cada taller es una pieza de la torre y cada color es un área. Toca una tarjeta para ver su pieza en 3D.</p>
+    </div>
+    <div class="filtros" role="group" aria-label="Filtrar por área"><button class="chip filtro" type="button" data-area="todas" aria-pressed="true" style="--c:#f7f0e3">Todas</button><button class="chip filtro" type="button" data-area="fund" aria-pressed="false" style="--c:#7cc8ff">Fundamentos</button><button class="chip filtro" type="button" data-area="py" aria-pressed="false" style="--c:#ffd166">Python</button><button class="chip filtro" type="button" data-area="js" aria-pressed="false" style="--c:#ff8fd8">JS y TS</button><button class="chip filtro" type="button" data-area="java" aria-pressed="false" style="--c:#ffa36b">Java</button><button class="chip filtro" type="button" data-area="datos" aria-pressed="false" style="--c:#6ee7b7">Datos</button><button class="chip filtro" type="button" data-area="ops" aria-pressed="false" style="--c:#b9a5ff">DevOps</button></div>
+    
+    <div class="nivel" id="nivel-1" data-cam="n1">
+      <div class="panel nivel-cab">
+        <p class="eyebrow">// nivel 1 · fundamentos · 3 talleres</p>
+        <h2>Empieza aquí</h2>
+        <p class="muted">Sin requisitos. Para quien arranca la carrera o nunca ha publicado un proyecto.</p>
+        <p class="precio-nivel">$10 el aula · $2 por persona si son 5</p>
+      </div>
+      <div class="carrusel" aria-label="Talleres del nivel 1"><button class="tarjeta" type="button" data-id="github" data-area="fund" style="--c:#7cc8ff"><span class="t-area">Fundamentos</span><span class="t-nombre">GitHub: Git y trabajo en equipo</span><span class="t-gancho">Deja de mandar código por WhatsApp: ramas, pull requests y tu primer repositorio publicado.</span><span class="t-pie"><span><b>$10</b> el aula · $2 c/u</span><span class="estado" data-e="disponible">Disponible</span></span></button><button class="tarjeta" type="button" data-id="html" data-area="fund" style="--c:#7cc8ff"><span class="t-area">Fundamentos</span><span class="t-nombre">HTML y CSS</span><span class="t-gancho">Una landing que se ve bien en cualquier celular, publicada gratis en internet.</span><span class="t-pie"><span><b>$10</b> el aula · $2 c/u</span><span class="estado" data-e="disponible">Disponible</span></span></button><button class="tarjeta" type="button" data-id="logica" data-area="fund" style="--c:#7cc8ff"><span class="t-area">Fundamentos</span><span class="t-nombre">Algoritmos y lógica de programación</span><span class="t-gancho">Piensa como programador: resuelve problemas reales paso a paso antes de escribir código.</span><span class="t-pie"><span><b>$10</b> el aula · $2 c/u</span><span class="estado" data-e="disponible">Disponible</span></span></button></div>
+      <div class="ventana"></div>
+    </div>
+    
+    <div class="nivel" id="nivel-2" data-cam="n2">
+      <div class="panel nivel-cab">
+        <p class="eyebrow">// nivel 2 · intermedio · 15 talleres</p>
+        <h2>Construye piezas reales</h2>
+        <p class="muted">APIs, bases de datos e interfaces que se conectan entre sí por un contrato común.</p>
+        <p class="precio-nivel">$20 el aula · $4 por persona si son 5</p>
+      </div>
+      <div class="carrusel" aria-label="Talleres del nivel 2"><button class="tarjeta" type="button" data-id="poo" data-area="py" style="--c:#ffd166"><span class="t-area">Python</span><span class="t-nombre">POO con Python</span><span class="t-gancho">Clases, objetos y herencia aplicados a reglas de negocio reales, no al típico Animal y Perro.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="disponible">Disponible</span></span></button><button class="tarjeta" type="button" data-id="fastapi" data-area="py" style="--c:#ffd166"><span class="t-area">Python</span><span class="t-nombre">API REST con FastAPI</span><span class="t-gancho">Tu primera API en Python, con documentación automática y lista para que otra app la use.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="pronto">Próximamente</span></span></button><button class="tarjeta" type="button" data-id="botpy" data-area="py" style="--c:#ffd166"><span class="t-area">Python</span><span class="t-nombre">Bots de Discord con Python</span><span class="t-gancho">Programa el bot que administra este servidor: comandos, roles y canales que se crean solos.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="pandas" data-area="py" style="--c:#ffd166"><span class="t-area">Python</span><span class="t-nombre">Análisis de datos con Pandas</span><span class="t-gancho">Convierte una base de datos en un reporte que cualquiera entiende a primera vista.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="grafos" data-area="py" style="--c:#ffd166"><span class="t-area">Python</span><span class="t-nombre">Algoritmos en grafos: el planificador</span><span class="t-gancho">Encuentra el horario que le sirve a 5 personas y el orden ideal para tomar los talleres.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="react" data-area="js" style="--c:#ff8fd8"><span class="t-area">JavaScript y TypeScript</span><span class="t-nombre">Interfaces con React</span><span class="t-gancho">Una app web de verdad: catálogo, cupos en vivo e inscripción, conectada a una API.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="pronto">Próximamente</span></span></button><button class="tarjeta" type="button" data-id="fpjs" data-area="js" style="--c:#ff8fd8"><span class="t-area">JavaScript y TypeScript</span><span class="t-nombre">Programación funcional con JavaScript</span><span class="t-gancho">map, filter y reduce hasta que te salgan solos, transformando datos reales.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="pronto">Próximamente</span></span></button><button class="tarjeta" type="button" data-id="express" data-area="js" style="--c:#ff8fd8"><span class="t-area">JavaScript y TypeScript</span><span class="t-nombre">API REST con Express.js</span><span class="t-gancho">La misma API, ahora en Node: compara y entiende qué cambia de verdad entre lenguajes.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="camino">En preparación</span></span></button><button class="tarjeta" type="button" data-id="ts" data-area="js" style="--c:#ff8fd8"><span class="t-area">JavaScript y TypeScript</span><span class="t-nombre">De JavaScript a TypeScript</span><span class="t-gancho">Que los errores aparezcan al compilar y no a las 3 de la mañana en producción.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="javamod" data-area="java" style="--c:#ffa36b"><span class="t-area">Java</span><span class="t-nombre">Java moderno: POO, colecciones y streams</span><span class="t-gancho">El Java que se usa hoy: records, streams y código que se lee solo.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="patrones" data-area="java" style="--c:#ffa36b"><span class="t-area">Java</span><span class="t-nombre">Patrones de diseño con Java</span><span class="t-gancho">Strategy, Observer y Factory aplicados a un sistema real, no a diagramas sueltos.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="junit" data-area="java" style="--c:#ffa36b"><span class="t-area">Java</span><span class="t-nombre">Pruebas con JUnit 5 y Mockito</span><span class="t-gancho">Cambia tu código sin miedo: si algo se rompe, las pruebas te avisan antes que el profe.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="sql" data-area="datos" style="--c:#6ee7b7"><span class="t-area">Datos y algoritmos</span><span class="t-nombre">SQL con PostgreSQL</span><span class="t-gancho">Una base de datos que no deja entrar a la sexta persona, ni si dos se inscriben al mismo tiempo.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="pronto">Próximamente</span></span></button><button class="tarjeta" type="button" data-id="mongo" data-area="datos" style="--c:#6ee7b7"><span class="t-area">Datos y algoritmos</span><span class="t-nombre">NoSQL con MongoDB</span><span class="t-gancho">Cuándo un documento le gana a una tabla, con agregaciones que responden preguntas reales.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="camino">En preparación</span></span></button><button class="tarjeta" type="button" data-id="optim" data-area="datos" style="--c:#6ee7b7"><span class="t-area">Datos y algoritmos</span><span class="t-nombre">Optimización de código y estructuras de datos</span><span class="t-gancho">Haz que tu código pase de lento a instantáneo, y mide cuánto mejoró.</span><span class="t-pie"><span><b>$20</b> el aula · $4 c/u</span><span class="estado" data-e="camino">En preparación</span></span></button></div>
+      <div class="ventana"></div>
+    </div>
+    
+    <div class="nivel" id="nivel-3" data-cam="n3">
+      <div class="panel nivel-cab">
+        <p class="eyebrow">// nivel 3 · avanzado · 12 talleres</p>
+        <h2>Protege, conecta y despliega</h2>
+        <p class="muted">Login, servidores, contenedores y servicios que se avisan cosas en tiempo real.</p>
+        <p class="precio-nivel">$30 el aula · $6 por persona si son 5</p>
+      </div>
+      <div class="carrusel" aria-label="Talleres del nivel 3"><button class="tarjeta" type="button" data-id="ia" data-area="py" style="--c:#ffd166"><span class="t-area">Python</span><span class="t-nombre">IA aplicada: asistente con RAG</span><span class="t-gancho">Un asistente que responde con el material de los talleres, no con inventos.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="next" data-area="js" style="--c:#ff8fd8"><span class="t-area">JavaScript y TypeScript</span><span class="t-nombre">Next.js full-stack</span><span class="t-gancho">Páginas que cargan rápido, aparecen en Google y verifican certificados.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="realtime" data-area="js" style="--c:#ff8fd8"><span class="t-area">JavaScript y TypeScript</span><span class="t-nombre">Tiempo real con WebSockets</span><span class="t-gancho">Cupos que cambian en vivo en todas las pantallas, sin recargar.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="movil" data-area="js" style="--c:#ff8fd8"><span class="t-area">JavaScript y TypeScript</span><span class="t-nombre">App móvil con React Native (Expo)</span><span class="t-gancho">Tu app corriendo en tu propio celular, con login y recordatorios.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="spring" data-area="java" style="--c:#ffa36b"><span class="t-area">Java</span><span class="t-nombre">API REST con Spring Boot</span><span class="t-gancho">El framework de las empresas grandes, sin miedo a la configuración.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="camino">En preparación</span></span></button><button class="tarjeta" type="button" data-id="rabbit" data-area="java" style="--c:#ffa36b"><span class="t-area">Java</span><span class="t-nombre">Mensajería con Spring y RabbitMQ</span><span class="t-gancho">Servicios que se avisan cosas entre sí sin llamarse directamente.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="oauth" data-area="ops" style="--c:#b9a5ff"><span class="t-area">DevOps y seguridad</span><span class="t-nombre">Autenticación y autorización con OAuth2</span><span class="t-gancho">El botón “Iniciar sesión con Discord”, por dentro, con tus roles convertidos en permisos.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="camino">En preparación</span></span></button><button class="tarjeta" type="button" data-id="linux" data-area="ops" style="--c:#b9a5ff"><span class="t-area">DevOps y seguridad</span><span class="t-nombre">Servidores Linux (Rocky y AlmaLinux)</span><span class="t-gancho">Pon tu API en internet, con HTTPS y en tu propio servidor.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="camino">En preparación</span></span></button><button class="tarjeta" type="button" data-id="docker" data-area="ops" style="--c:#b9a5ff"><span class="t-area">DevOps y seguridad</span><span class="t-nombre">Docker y Docker Compose</span><span class="t-gancho">Se acabó el “en mi máquina sí funciona”: todo el sistema arranca con un comando.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="cicd" data-area="ops" style="--c:#b9a5ff"><span class="t-area">DevOps y seguridad</span><span class="t-nombre">CI/CD con GitHub Actions</span><span class="t-gancho">Haces merge y tu app se prueba y se publica sola.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="seguridad" data-area="ops" style="--c:#b9a5ff"><span class="t-area">DevOps y seguridad</span><span class="t-nombre">Seguridad web (OWASP Top 10)</span><span class="t-gancho">Ataca tu propia API antes de que lo haga otro, y ciérrale la puerta.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="vota">Vota por él</span></span></button><button class="tarjeta" type="button" data-id="integracion" data-area="integ" style="--c:#fff3c4"><span class="t-area">Integración</span><span class="t-nombre">Aula de integración</span><span class="t-gancho">Cinco personas, cinco piezas distintas y un sistema funcionando al final de las 2 horas.</span><span class="t-pie"><span><b>$30</b> el aula · $6 c/u</span><span class="estado" data-e="pronto">Próximamente</span></span></button></div>
+      <div class="ventana"></div>
+    </div>
+  </section>
+
+  <section id="rutas" data-cam="rutas">
+    <div class="panel">
+      <p class="eyebrow">// rutas · paquetes</p>
+      <h2>Rutas que se conectan</h2>
+      <p class="muted">En una ruta cada producto usa el anterior. Si tu grupo la paga por adelantado, ahorra hasta 15 %. Toca una ruta y mírala encenderse en la torre.</p>
+    </div>
+    <div class="rutas"><button class="ruta" type="button" data-id="r-fundamentos"><span class="ruta-cab"><span class="t-nombre">Fundamentos</span><span class="ruta-meta">4 talleres · 8 h</span></span><span class="t-gancho">Para 1.º y 2.º semestre</span><span class="ruta-hilo" aria-hidden="true"><i style="--c:#7cc8ff"></i><i style="--c:#ffd166"></i><i style="--c:#7cc8ff"></i><i style="--c:#7cc8ff"></i><i class="fin"></i></span><span class="ruta-precio"><span class="tachado">$50</span><span><b>$45</b> el paquete</span><span><b>$9</b> c/u si son 5</span></span></button><button class="ruta" type="button" data-id="r-python"><span class="ruta-cab"><span class="t-nombre">Full-stack Python</span><span class="ruta-meta">7 talleres · 14 h</span></span><span class="t-gancho">Para quien quiere su primer sistema completo</span><span class="ruta-hilo" aria-hidden="true"><i style="--c:#7cc8ff"></i><i style="--c:#ffd166"></i><i style="--c:#6ee7b7"></i><i style="--c:#ffd166"></i><i style="--c:#7cc8ff"></i><i style="--c:#ff8fd8"></i><i style="--c:#b9a5ff"></i><i class="fin"></i></span><span class="ruta-precio"><span class="tachado">$130</span><span><b>$110</b> el paquete</span><span><b>$22</b> c/u si son 5</span></span></button><button class="ruta" type="button" data-id="r-js"><span class="ruta-cab"><span class="t-nombre">Full-stack JavaScript</span><span class="ruta-meta">8 talleres · 16 h</span></span><span class="t-gancho">Para el perfil frontend o Node</span><span class="ruta-hilo" aria-hidden="true"><i style="--c:#7cc8ff"></i><i style="--c:#7cc8ff"></i><i style="--c:#ff8fd8"></i><i style="--c:#ff8fd8"></i><i style="--c:#6ee7b7"></i><i style="--c:#ff8fd8"></i><i style="--c:#ff8fd8"></i><i style="--c:#ff8fd8"></i><i class="fin"></i></span><span class="ruta-precio"><span class="tachado">$150</span><span><b>$130</b> el paquete</span><span><b>$26</b> c/u si son 5</span></span></button><button class="ruta" type="button" data-id="r-java"><span class="ruta-cab"><span class="t-nombre">Backend Java</span><span class="ruta-meta">7 talleres · 14 h</span></span><span class="t-gancho">Para quien apunta a empresas que trabajan con Java</span><span class="ruta-hilo" aria-hidden="true"><i style="--c:#7cc8ff"></i><i style="--c:#ffa36b"></i><i style="--c:#ffa36b"></i><i style="--c:#6ee7b7"></i><i style="--c:#ffa36b"></i><i style="--c:#ffa36b"></i><i style="--c:#ffa36b"></i><i class="fin"></i></span><span class="ruta-precio"><span class="tachado">$150</span><span><b>$130</b> el paquete</span><span><b>$26</b> c/u si son 5</span></span></button><button class="ruta" type="button" data-id="r-devops"><span class="ruta-cab"><span class="t-nombre">DevOps</span><span class="ruta-meta">5 talleres · 10 h</span></span><span class="t-gancho">Para quien quiere desplegar y operar sistemas</span><span class="ruta-hilo" aria-hidden="true"><i style="--c:#7cc8ff"></i><i style="--c:#b9a5ff"></i><i style="--c:#b9a5ff"></i><i style="--c:#b9a5ff"></i><i style="--c:#b9a5ff"></i><i class="fin"></i></span><span class="ruta-precio"><span class="tachado">$130</span><span><b>$110</b> el paquete</span><span><b>$22</b> c/u si son 5</span></span></button><button class="ruta" type="button" data-id="r-algoritmos"><span class="ruta-cab"><span class="t-nombre">Algoritmos y entrevistas</span><span class="ruta-meta">3 talleres · 6 h</span></span><span class="t-gancho">Para entrevistas técnicas y concursos</span><span class="ruta-hilo" aria-hidden="true"><i style="--c:#7cc8ff"></i><i style="--c:#6ee7b7"></i><i style="--c:#ffd166"></i><i class="fin"></i></span><span class="ruta-precio"><span class="tachado">$50</span><span><b>$45</b> el paquete</span><span><b>$9</b> c/u si son 5</span></span></button></div>
+    <div class="ventana"></div>
+  </section>
+
+  <section id="precio" data-cam="precio">
+    <div class="panel">
+      <p class="eyebrow">// calculadora</p>
+      <h2>¿Cuánto pagas tú?</h2>
+      <div class="seg" role="radiogroup" aria-label="Nivel del taller"><button type="button" role="radio" aria-checked="false" data-precio="10">Nivel 1 · $10</button><button type="button" role="radio" aria-checked="false" data-precio="20">Nivel 2 · $20</button><button type="button" role="radio" aria-checked="false" data-precio="30">Nivel 3 · $30</button></div>
+      <p class="sub">Personas en el aula</p>
+      <div class="asientos" role="group" aria-label="Personas en el aula"><button class="asiento" type="button" aria-label="1 persona"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4" fill="currentColor"/><path d="M4 21c0-4.6 3.6-7.5 8-7.5s8 2.9 8 7.5z" fill="currentColor"/></svg></button><button class="asiento" type="button" aria-label="2 personas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4" fill="currentColor"/><path d="M4 21c0-4.6 3.6-7.5 8-7.5s8 2.9 8 7.5z" fill="currentColor"/></svg></button><button class="asiento" type="button" aria-label="3 personas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4" fill="currentColor"/><path d="M4 21c0-4.6 3.6-7.5 8-7.5s8 2.9 8 7.5z" fill="currentColor"/></svg></button><button class="asiento" type="button" aria-label="4 personas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4" fill="currentColor"/><path d="M4 21c0-4.6 3.6-7.5 8-7.5s8 2.9 8 7.5z" fill="currentColor"/></svg></button><button class="asiento" type="button" aria-label="5 personas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4" fill="currentColor"/><path d="M4 21c0-4.6 3.6-7.5 8-7.5s8 2.9 8 7.5z" fill="currentColor"/></svg></button></div>
+      <p class="resultado"><span class="grande" id="pp">$4</span><span>por persona</span></p>
+      <p class="reparto" id="reparto">$20 entre 5 personas.</p>
+    </div>
+    <div class="ventana"></div>
+  </section>
+
+  <section id="tutorias" data-cam="tutorias">
+    <div class="panel">
+      <p class="eyebrow">// tutorías</p>
+      <h2>Tutorías para tus materias</h2>
+      <p class="muted">Programación, bases de datos y matemáticas, en la misma aula de hasta 5 y con un solo pago.</p>
+      <div class="formatos"><div class="formato"><span class="f-dur">1 hora</span><span class="t-nombre">Express</span><span class="f-precio">$10</span><p>Una duda puntual o un ejercicio tipo.</p></div><div class="formato"><span class="f-dur">2 horas</span><span class="t-nombre">Estándar</span><span class="f-precio">$18</span><p>Un tema completo con ejercicios.</p></div><div class="formato"><span class="f-dur">3 horas</span><span class="t-nombre">Maratón</span><span class="f-precio">$25</span><p>Temario del parcial, simulacro y corrección.</p></div><div class="formato"><span class="f-dur">8 sesiones de 2 h</span><span class="t-nombre">Plan de semestre</span><span class="f-precio">$120</span><p>Un grupo fijo acompañado toda la materia.</p></div></div>
+      <ul class="materias" aria-label="Materias"><li class="chip chip-plano">Programación I y II</li><li class="chip chip-plano">POO</li><li class="chip chip-plano">Estructuras de datos</li><li class="chip chip-plano">Bases de datos</li><li class="chip chip-plano">SQL</li><li class="chip chip-plano">Cálculo</li><li class="chip chip-plano">Álgebra lineal</li><li class="chip chip-plano">Matemática discreta</li><li class="chip chip-plano">Estadística</li></ul>
+      <p class="nota">Explico y practicamos con ejercicios parecidos. No resuelvo deberes, proyectos ni pruebas calificadas.</p>
+    </div>
+    <div class="ventana"></div>
+  </section>
+
+  <section id="unete" data-cam="final">
+    <div class="ventana ventana-alta"></div>
+    <div class="panel">
+      <p class="eyebrow">// siguiente paso</p>
+      <h2>Arma tu aula</h2>
+      <p class="muted">Junta a tu grupo, elige un taller y reserva en Discord. Si vas sin grupo, te sumo a un aula abierta y el precio se reparte entre quienes se inscriban.</p>
+      <div class="cta-fila"><a class="btn btn-caret" data-link="discord" href="#unete">Entrar al Discord</a><a class="btn btn-ghost" data-link="whatsapp" href="#unete">Escribir por WhatsApp</a></div>
+      <p class="numero" data-numero hidden>WhatsApp <span></span><button class="icono-btn" type="button" data-copiar>Copiar</button></p>
+    </div>
+    <footer class="pie">© 2026 Aula5 · Hecho por estudiantes, para estudiantes.</footer>
+  </section>
+</main>
+
+<div class="velo" aria-hidden="true"></div>
+<div class="hoja" id="hoja" role="dialog" aria-modal="false" aria-labelledby="hoja-titulo" hidden>
+  <div class="hoja-top">
+    <span class="asa" aria-hidden="true"></span>
+    <div class="hoja-nav">
+      <button class="icono-btn" id="hoja-prev" type="button" aria-label="Anterior">←</button>
+      <span id="hoja-pos">1 / 30</span>
+      <button class="icono-btn" id="hoja-sig" type="button" aria-label="Siguiente">→</button>
+    </div>
+    <button class="icono-btn" id="hoja-cerrar" type="button">Cerrar ✕</button>
+  </div>
+  <div class="hoja-cuerpo" id="hoja-cuerpo"></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="application/json" id="datos">{"config": {"marca": "Aula5", "discord": "https://discord.gg/TU-INVITACION", "whatsapp": "", "pie": "Hecho por estudiantes, para estudiantes."}, "areas": {"fund": {"nombre": "Fundamentos", "corto": "Fundamentos", "color": "#7cc8ff", "forma": "tetra"}, "py": {"nombre": "Python", "corto": "Python", "color": "#ffd166", "forma": "ico"}, "js": {"nombre": "JavaScript y TypeScript", "corto": "JS y TS", "color": "#ff8fd8", "forma": "octa"}, "java": {"nombre": "Java", "corto": "Java", "color": "#ffa36b", "forma": "dodeca"}, "datos": {"nombre": "Datos y algoritmos", "corto": "Datos", "color": "#6ee7b7", "forma": "cubo"}, "ops": {"nombre": "DevOps y seguridad", "corto": "DevOps", "color": "#b9a5ff", "forma": "hex"}, "integ": {"nombre": "Integración", "corto": "Integración", "color": "#fff3c4", "forma": "corona"}}, "estados": {"disponible": {"texto": "Disponible", "cta": "Reservar este taller"}, "pronto": {"texto": "Próximamente", "cta": "Avísame cuando abra"}, "camino": {"texto": "En preparación", "cta": "Avísame cuando abra"}, "vota": {"texto": "Vota por él", "cta": "Quiero este taller"}}, "talleres": [{"id": "github", "nombre": "GitHub: Git y trabajo en equipo", "corto": "GitHub", "area": "fund", "nivel": 1, "estado": "disponible", "emblema": "ramas", "gancho": "Deja de mandar código por WhatsApp: ramas, pull requests y tu primer repositorio publicado.", "producto": "Repositorio del proyecto con README, issues, ramas, tu primer pull request y una página publicada en GitHub Pages.", "conecta": ["html", "poo", "cicd"], "conexiones": ["html", "poo", "cicd"]}, {"id": "html", "nombre": "HTML y CSS", "corto": "HTML y CSS", "area": "fund", "nivel": 1, "estado": "disponible", "emblema": "capas", "gancho": "Una landing que se ve bien en cualquier celular, publicada gratis en internet.", "producto": "Landing responsive de AulaHub con catálogo, precios y preguntas frecuentes, con variables CSS y publicada en GitHub Pages.", "conecta": ["react", "fpjs", "next"], "conexiones": ["github", "react", "fpjs", "next"]}, {"id": "logica", "nombre": "Algoritmos y lógica de programación", "corto": "Lógica", "area": "fund", "nivel": 1, "estado": "disponible", "emblema": "ordenar", "gancho": "Piensa como programador: resuelve problemas reales paso a paso antes de escribir código.", "producto": "Simulador de inscripciones en consola: menú, cupo máximo de 5, reparto del precio al centavo y lista de espera.", "conecta": ["poo", "optim", "grafos"], "conexiones": ["poo", "grafos", "optim"]}, {"id": "poo", "nombre": "POO con Python", "corto": "POO Python", "area": "py", "nivel": 2, "estado": "disponible", "emblema": "clases", "gancho": "Clases, objetos y herencia aplicados a reglas de negocio reales, no al típico Animal y Perro.", "producto": "Librería aulahub-core: Taller, Aula, Estudiante e Inscripción con sus reglas, excepciones propias y pruebas.", "conecta": ["fastapi", "botpy", "grafos", "logica"], "conexiones": ["github", "logica", "fastapi", "botpy", "grafos"]}, {"id": "fastapi", "nombre": "API REST con FastAPI", "corto": "FastAPI", "area": "py", "nivel": 2, "estado": "pronto", "emblema": "api", "gancho": "Tu primera API en Python, con documentación automática y lista para que otra app la use.", "producto": "API Aulas v1 que cumple el contrato común, sobre PostgreSQL, con documentación en /docs.", "conecta": ["react", "botpy", "pandas", "oauth", "docker", "sql", "poo"], "conexiones": ["poo", "botpy", "pandas", "grafos", "react", "sql", "optim", "ia", "oauth", "linux", "docker", "seguridad", "integracion"]}, {"id": "botpy", "nombre": "Bots de Discord con Python", "corto": "Bot Discord", "area": "py", "nivel": 2, "estado": "vota", "emblema": "chat", "gancho": "Programa el bot que administra este servidor: comandos, roles y canales que se crean solos.", "producto": "Bot con los comandos /talleres, /inscribirme y /mis-aulas que crea los canales de cada aula.", "conecta": ["fastapi", "oauth", "mongo"], "conexiones": ["poo", "fastapi", "grafos", "mongo", "optim", "ia", "realtime", "rabbit", "oauth"]}, {"id": "pandas", "nombre": "Análisis de datos con Pandas", "corto": "Pandas", "area": "py", "nivel": 2, "estado": "vota", "emblema": "barras", "gancho": "Convierte una base de datos en un reporte que cualquiera entiende a primera vista.", "producto": "Reporte de ocupación, ingresos por taller y recompra, exportado a Excel con gráficos.", "conecta": ["sql", "fastapi", "fpjs"], "conexiones": ["fastapi", "fpjs", "sql", "rabbit"]}, {"id": "grafos", "nombre": "Algoritmos en grafos: el planificador", "corto": "Grafos", "area": "py", "nivel": 2, "estado": "vota", "emblema": "grafo", "gancho": "Encuentra el horario que le sirve a 5 personas y el orden ideal para tomar los talleres.", "producto": "Servicio que calcula el horario común, arma grupos por nivel y ordena el catálogo por requisitos.", "conecta": ["poo", "fastapi", "botpy"], "conexiones": ["logica", "poo", "fastapi", "botpy"]}, {"id": "react", "nombre": "Interfaces con React", "corto": "React", "area": "js", "nivel": 2, "estado": "pronto", "emblema": "componentes", "gancho": "Una app web de verdad: catálogo, cupos en vivo e inscripción, conectada a una API.", "producto": "App web con catálogo, cupos por aula, inscripción y “mis aulas”, que cambia de backend con una variable.", "conecta": ["fastapi", "express", "spring", "html", "oauth", "ts"], "conexiones": ["html", "fastapi", "fpjs", "express", "ts", "realtime", "spring", "oauth", "docker", "integracion"]}, {"id": "fpjs", "nombre": "Programación funcional con JavaScript", "corto": "JS funcional", "area": "js", "nivel": 2, "estado": "pronto", "emblema": "pipeline", "gancho": "map, filter y reduce hasta que te salgan solos, transformando datos reales.", "producto": "Módulo aulahub-stats de funciones puras (ocupación, ingresos, ranking) y catálogo dinámico en la landing.", "conecta": ["html", "react", "realtime"], "conexiones": ["html", "pandas", "react", "realtime"]}, {"id": "express", "nombre": "API REST con Express.js", "corto": "Express", "area": "js", "nivel": 2, "estado": "camino", "emblema": "api", "gancho": "La misma API, ahora en Node: compara y entiende qué cambia de verdad entre lenguajes.", "producto": "API Aulas v1 en Node sobre MongoDB, intercambiable con la de FastAPI y la de Spring Boot.", "conecta": ["react", "mongo", "realtime", "ts"], "conexiones": ["react", "ts", "mongo", "realtime", "oauth", "seguridad"]}, {"id": "ts", "nombre": "De JavaScript a TypeScript", "corto": "TypeScript", "area": "js", "nivel": 2, "estado": "vota", "emblema": "tipos", "gancho": "Que los errores aparezcan al compilar y no a las 3 de la mañana en producción.", "producto": "SDK tipado del contrato, generado desde OpenAPI y publicado como paquete.", "conecta": ["react", "next", "movil", "express"], "conexiones": ["react", "express", "next", "movil"]}, {"id": "javamod", "nombre": "Java moderno: POO, colecciones y streams", "corto": "Java moderno", "area": "java", "nivel": 2, "estado": "vota", "emblema": "streams", "gancho": "El Java que se usa hoy: records, streams y código que se lee solo.", "producto": "Librería aulahub-core-java con records, enums e interfaces selladas, con las reglas del core de Python.", "conecta": ["spring", "patrones", "junit"], "conexiones": ["patrones", "junit", "spring"]}, {"id": "patrones", "nombre": "Patrones de diseño con Java", "corto": "Patrones", "area": "java", "nivel": 2, "estado": "vota", "emblema": "piezas", "gancho": "Strategy, Observer y Factory aplicados a un sistema real, no a diagramas sueltos.", "producto": "Refactor del core con políticas de precio intercambiables y eventos de inscripción.", "conecta": ["spring", "rabbit", "javamod"], "conexiones": ["javamod", "spring", "rabbit"]}, {"id": "junit", "nombre": "Pruebas con JUnit 5 y Mockito", "corto": "JUnit", "area": "java", "nivel": 2, "estado": "vota", "emblema": "checks", "gancho": "Cambia tu código sin miedo: si algo se rompe, las pruebas te avisan antes que el profe.", "producto": "Pruebas unitarias del core y pruebas de la API contra el contrato común.", "conecta": ["spring", "cicd", "javamod"], "conexiones": ["javamod", "spring", "cicd"]}, {"id": "sql", "nombre": "SQL con PostgreSQL", "corto": "SQL", "area": "datos", "nivel": 2, "estado": "pronto", "emblema": "tabla", "gancho": "Una base de datos que no deja entrar a la sexta persona, ni si dos se inscriben al mismo tiempo.", "producto": "Esquema con llaves, restricciones y datos semilla, vistas de reportes y una transacción que protege el cupo.", "conecta": ["fastapi", "spring", "pandas", "ia"], "conexiones": ["fastapi", "pandas", "ia", "spring", "integracion"]}, {"id": "mongo", "nombre": "NoSQL con MongoDB", "corto": "MongoDB", "area": "datos", "nivel": 2, "estado": "camino", "emblema": "documentos", "gancho": "Cuándo un documento le gana a una tabla, con agregaciones que responden preguntas reales.", "producto": "Colecciones para bitácora de aulas, comentarios y actividad, con índices y agregaciones.", "conecta": ["express", "botpy"], "conexiones": ["botpy", "express"]}, {"id": "optim", "nombre": "Optimización de código y estructuras de datos", "corto": "Estructuras", "area": "datos", "nivel": 2, "estado": "camino", "emblema": "heap", "gancho": "Haz que tu código pase de lento a instantáneo, y mide cuánto mejoró.", "producto": "Lista de espera (cola), ranking (heap), autocompletado (trie) y un refactor medido con benchmarks.", "conecta": ["logica", "fastapi", "botpy"], "conexiones": ["logica", "fastapi", "botpy"]}, {"id": "ia", "nombre": "IA aplicada: asistente con RAG", "corto": "IA con RAG", "area": "py", "nivel": 3, "estado": "vota", "emblema": "red", "gancho": "Un asistente que responde con el material de los talleres, no con inventos.", "producto": "Endpoint que busca en los apuntes con pgvector y responde con un modelo gratuito o local.", "conecta": ["fastapi", "sql", "botpy"], "conexiones": ["fastapi", "botpy", "sql"]}, {"id": "next", "nombre": "Next.js full-stack", "corto": "Next.js", "area": "js", "nivel": 3, "estado": "vota", "emblema": "render", "gancho": "Páginas que cargan rápido, aparecen en Google y verifican certificados.", "producto": "Sitio público renderizado en servidor, con páginas de certificado verificable por enlace.", "conecta": ["ts", "oauth", "html"], "conexiones": ["html", "ts", "oauth"]}, {"id": "realtime", "nombre": "Tiempo real con WebSockets", "corto": "Tiempo real", "area": "js", "nivel": 3, "estado": "vota", "emblema": "ondas", "gancho": "Cupos que cambian en vivo en todas las pantallas, sin recargar.", "producto": "Servicio de notificaciones: cupos en vivo, aviso de inicio de aula y pago confirmado.", "conecta": ["react", "rabbit", "botpy", "express"], "conexiones": ["botpy", "react", "fpjs", "express", "movil", "rabbit"]}, {"id": "movil", "nombre": "App móvil con React Native (Expo)", "corto": "App móvil", "area": "js", "nivel": 3, "estado": "vota", "emblema": "movil", "gancho": "Tu app corriendo en tu propio celular, con login y recordatorios.", "producto": "App “Mis aulas” con inicio de sesión y recordatorios.", "conecta": ["ts", "oauth", "realtime"], "conexiones": ["ts", "realtime", "oauth"]}, {"id": "spring", "nombre": "API REST con Spring Boot", "corto": "Spring Boot", "area": "java", "nivel": 3, "estado": "camino", "emblema": "api", "gancho": "El framework de las empresas grandes, sin miedo a la configuración.", "producto": "API Aulas v1 en Java con Spring Data JPA y PostgreSQL, con el mismo contrato que las otras.", "conecta": ["react", "sql", "junit", "rabbit", "oauth"], "conexiones": ["react", "javamod", "patrones", "junit", "sql", "rabbit", "oauth", "seguridad"]}, {"id": "rabbit", "nombre": "Mensajería con Spring y RabbitMQ", "corto": "RabbitMQ", "area": "java", "nivel": 3, "estado": "vota", "emblema": "mensajes", "gancho": "Servicios que se avisan cosas entre sí sin llamarse directamente.", "producto": "Servicio de pagos que publica los eventos InscripcionCreada y PagoConfirmado.", "conecta": ["realtime", "botpy", "pandas", "spring"], "conexiones": ["botpy", "pandas", "patrones", "realtime", "spring"]}, {"id": "oauth", "nombre": "Autenticación y autorización con OAuth2", "corto": "OAuth2", "area": "ops", "nivel": 3, "estado": "camino", "emblema": "llave", "gancho": "El botón “Iniciar sesión con Discord”, por dentro, con tus roles convertidos en permisos.", "producto": "Servicio de identidad que emite tokens con roles y un middleware que protege la API.", "conecta": ["react", "fastapi", "express", "spring", "botpy", "next", "movil"], "conexiones": ["fastapi", "botpy", "react", "express", "next", "movil", "spring", "seguridad", "integracion"]}, {"id": "linux", "nombre": "Servidores Linux (Rocky y AlmaLinux)", "corto": "Linux", "area": "ops", "nivel": 3, "estado": "camino", "emblema": "servidor", "gancho": "Pon tu API en internet, con HTTPS y en tu propio servidor.", "producto": "Servidor con SSH por llaves, firewall, SELinux, tu API como servicio y Nginx con HTTPS.", "conecta": ["docker", "cicd", "fastapi"], "conexiones": ["fastapi", "docker", "cicd"]}, {"id": "docker", "nombre": "Docker y Docker Compose", "corto": "Docker", "area": "ops", "nivel": 3, "estado": "vota", "emblema": "contenedores", "gancho": "Se acabó el “en mi máquina sí funciona”: todo el sistema arranca con un comando.", "producto": "Un docker-compose que levanta front, API, base de datos y bot con un solo comando.", "conecta": ["linux", "cicd", "fastapi", "react"], "conexiones": ["fastapi", "react", "linux", "cicd", "integracion"]}, {"id": "cicd", "nombre": "CI/CD con GitHub Actions", "corto": "CI/CD", "area": "ops", "nivel": 3, "estado": "vota", "emblema": "bucle", "gancho": "Haces merge y tu app se prueba y se publica sola.", "producto": "Pipeline que corre las pruebas, construye la imagen y despliega al servidor en cada merge.", "conecta": ["github", "junit", "docker", "linux"], "conexiones": ["github", "junit", "linux", "docker"]}, {"id": "seguridad", "nombre": "Seguridad web (OWASP Top 10)", "corto": "Seguridad", "area": "ops", "nivel": 3, "estado": "vota", "emblema": "escudo", "gancho": "Ataca tu propia API antes de que lo haga otro, y ciérrale la puerta.", "producto": "Auditoría y parches de tu API: inyección, acceso a datos ajenos, secretos, CORS y límite de peticiones.", "conecta": ["fastapi", "express", "spring", "oauth"], "conexiones": ["fastapi", "express", "spring", "oauth"]}, {"id": "integracion", "nombre": "Aula de integración", "corto": "Integración", "area": "integ", "nivel": 3, "estado": "pronto", "emblema": "integracion", "gancho": "Cinco personas, cinco piezas distintas y un sistema funcionando al final de las 2 horas.", "producto": "Landing, app, API, base de datos y lo que traiga cada uno, conectados y desplegados en vivo. Requisito: 2 talleres previos.", "conecta": ["react", "fastapi", "sql", "docker", "oauth"], "conexiones": ["fastapi", "react", "sql", "oauth", "docker"]}], "rutas": [{"id": "r-fundamentos", "nombre": "Fundamentos", "para": "Para 1.º y 2.º semestre", "talleres": ["logica", "poo", "github", "html"], "horas": 8, "total": 50, "paquete": 45}, {"id": "r-python", "nombre": "Full-stack Python", "para": "Para quien quiere su primer sistema completo", "talleres": ["github", "poo", "sql", "fastapi", "html", "react", "oauth"], "horas": 14, "total": 130, "paquete": 110}, {"id": "r-js", "nombre": "Full-stack JavaScript", "para": "Para el perfil frontend o Node", "talleres": ["github", "html", "fpjs", "ts", "mongo", "express", "react", "realtime"], "horas": 16, "total": 150, "paquete": 130}, {"id": "r-java", "nombre": "Backend Java", "para": "Para quien apunta a empresas que trabajan con Java", "talleres": ["github", "javamod", "patrones", "sql", "spring", "junit", "rabbit"], "horas": 14, "total": 150, "paquete": 130}, {"id": "r-devops", "nombre": "DevOps", "para": "Para quien quiere desplegar y operar sistemas", "talleres": ["github", "linux", "docker", "cicd", "seguridad"], "horas": 10, "total": 130, "paquete": 110}, {"id": "r-algoritmos", "nombre": "Algoritmos y entrevistas", "para": "Para entrevistas técnicas y concursos", "talleres": ["logica", "optim", "grafos"], "horas": 6, "total": 50, "paquete": 45}], "niveles": {"1": {"nombre": "Nivel 1 · Fundamentos", "precio": 10}, "2": {"nombre": "Nivel 2 · Intermedio", "precio": 20}, "3": {"nombre": "Nivel 3 · Avanzado", "precio": 30}}}</script>
+<script>
+(() => {
+  const D = JSON.parse(document.getElementById('datos').textContent);
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const T = Object.fromEntries(D.talleres.map(t => [t.id, t]));
+  const R = Object.fromEntries(D.rutas.map(r => [r.id, r]));
+  const est = (window.AulaEstado = { seccion: 'hero', abierto: null, filtro: 'todas' });
+  const emitir = (n, detail) => window.dispatchEvent(new CustomEvent('aula:' + n, { detail }));
+  const dinero = n => { const c = Math.round(n * 100); return '$' + (c % 100 === 0 ? String(c / 100) : (c / 100).toFixed(2).replace('.', ',')); };
+  const repartir = (total, n) => { const c = Math.round(total * 100), b = Math.floor(c / n), extra = c - b * n; return Array.from({ length: n }, (_, i) => (b + (i < extra ? 1 : 0)) / 100); };
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+  // ---------- enlaces de contacto ----------
+  const wa = String(D.config.whatsapp || '').replace(/\D/g, '');
+  const enlaceWa = txt => (wa ? `https://wa.me/${wa}?text=${encodeURIComponent(txt)}` : D.config.discord);
+  $$('[data-link="discord"]').forEach(a => { a.href = D.config.discord; a.target = '_blank'; a.rel = 'noopener'; });
+  $$('[data-link="whatsapp"]').forEach(a => { if (!wa) { a.hidden = true; return; } a.href = enlaceWa(`Hola, quiero armar un aula en ${D.config.marca}.`); a.target = '_blank'; a.rel = 'noopener'; });
+  const numero = $('[data-numero]');
+  if (wa && numero) { numero.hidden = false; $('span', numero).textContent = '+' + wa; }
+
+  const toast = $('#toast'); let tt = 0;
+  const avisar = msg => { toast.textContent = msg; toast.classList.add('ver'); clearTimeout(tt); tt = setTimeout(() => toast.classList.remove('ver'), 1800); };
+  $$('[data-copiar]').forEach(b => b.addEventListener('click', () => {
+    const txt = '+' + wa;
+    const fallback = () => { const s = window.getSelection(), r = document.createRange(); r.selectNodeContents($('span', numero)); s.removeAllRanges(); s.addRange(r); avisar('Número seleccionado: cópialo'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => avisar('Número copiado'), fallback); else fallback();
+  }));
+
+  // ---------- hoja de detalle ----------
+  const hoja = $('#hoja'), cuerpo = $('#hoja-cuerpo'), pos = $('#hoja-pos'), btnPrev = $('#hoja-prev'), btnSig = $('#hoja-sig');
+  let focoPrevio = null, lista = [], indice = 0, tipoActual = null, cierre = 0;
+  const chipArea = a => `<span class="chip" style="--c:${D.areas[a].color}">${esc(D.areas[a].nombre)}</span>`;
+  function htmlTaller(t) {
+    const N = D.niveles[t.nivel], E = D.estados[t.estado];
+    const con = t.conexiones.map(id => { const o = T[id]; return `<button class="chip" type="button" style="--c:${D.areas[o.area].color}" data-ir="${o.id}">${esc(o.corto)}</button>`; }).join('');
+    const href = t.estado === 'disponible' ? D.config.discord : enlaceWa(`Hola, quiero el taller «${t.nombre}» cuando abra.`);
+    return `<div class="chips-fila">${chipArea(t.area)}<span class="chip chip-plano">Nivel ${t.nivel}</span><span class="estado" data-e="${t.estado}">${esc(E.texto)}</span></div>
+      <h3 id="hoja-titulo">${esc(t.nombre)}</h3>
+      <p class="gancho">${esc(t.gancho)}</p>
+      <dl class="ficha">
+        <div><dt>Construyes</dt><dd>${esc(t.producto)}</dd></div>
+        <div><dt>Formato</dt><dd>2 horas en vivo por Discord, en un aula de hasta 5 personas que comparten pantalla.</dd></div>
+        <div><dt>Precio</dt><dd><b>${dinero(N.precio)}</b> el aula completa · <b>${dinero(N.precio / 5)}</b> por persona si son 5</dd></div>
+      </dl>
+      <p class="sub">Se conecta con</p>
+      <div class="conecta">${con}</div>
+      <div class="cta-fila"><a class="btn btn-caret" href="${esc(href)}" target="_blank" rel="noopener">${esc(E.cta)}</a></div>
+      ${t.estado === 'disponible' ? '' : '<p class="aviso">Un taller nuevo abre cuando al menos dos aulas lo piden.</p>'}`;
+  }
+  function htmlRuta(r) {
+    const items = r.talleres.map(id => { const o = T[id]; return `<li style="--c:${D.areas[o.area].color}"><button type="button" data-ir="${o.id}">${esc(o.nombre)}</button><span class="p">${dinero(D.niveles[o.nivel].precio)}</span></li>`; }).join('');
+    return `<div class="chips-fila"><span class="chip chip-plano">Ruta</span><span class="chip chip-plano">${r.talleres.length} talleres · ${r.horas} horas</span></div>
+      <h3 id="hoja-titulo">${esc(r.nombre)}</h3>
+      <p class="gancho">${esc(r.para)}. Cada producto usa el anterior, y la ruta se ilumina en la torre.</p>
+      <ol class="lista-ruta">${items}<li class="meta"><button type="button" data-ir="integracion">Cierre: Aula de integración</button><span class="p">$30 aparte</span></li></ol>
+      <div class="precio-caja">
+        <div class="linea"><span>Taller por taller</span><span class="tachado">${dinero(r.total)}</span></div>
+        <div class="linea"><span>Paquete prepagado por el aula</span><b>${dinero(r.paquete)}</b></div>
+        <div class="linea"><span>Por persona si son 5</span><b>${dinero(r.paquete / 5)}</b></div>
+      </div>
+      <div class="cta-fila"><a class="btn btn-caret" href="${esc(enlaceWa(`Hola, quiero la ruta «${r.nombre}» para mi grupo.`))}" target="_blank" rel="noopener">Quiero esta ruta</a></div>
+      <p class="aviso">El paquete se paga por adelantado, cada taller se agenda con 48 horas de aviso y vence a los 4 meses.</p>`;
+  }
+  function abrir(tipo, id) {
+    const item = tipo === 'taller' ? T[id] : R[id]; if (!item) return;
+    clearTimeout(cierre);
+    tipoActual = tipo; est.abierto = { tipo, id };
+    lista = tipo === 'taller' ? D.talleres.map(t => t.id) : D.rutas.map(r => r.id);
+    indice = lista.indexOf(id);
+    cuerpo.innerHTML = tipo === 'taller' ? htmlTaller(item) : htmlRuta(item);
+    pos.textContent = `${indice + 1} / ${lista.length}`;
+    hoja.setAttribute('aria-label', tipo === 'taller' ? 'Detalle del taller' : 'Detalle de la ruta');
+    if (hoja.hidden) {
+      focoPrevio = document.activeElement;
+      hoja.hidden = false; hoja.classList.add('entrando');
+      requestAnimationFrame(() => requestAnimationFrame(() => hoja.classList.remove('entrando')));
+      document.body.classList.add('hoja-abierta');
+    }
+    hoja.scrollTop = 0;
+    $('#hoja-cerrar').focus({ preventScroll: true });
+    try { history.replaceState(null, '', '#' + id); } catch (e) { /* sin historial */ }
+    emitir('abrir', { tipo, id });
+  }
+  function cerrar() {
+    if (hoja.hidden) return;
+    est.abierto = null; tipoActual = null;
+    hoja.classList.add('entrando'); document.body.classList.remove('hoja-abierta');
+    cierre = setTimeout(() => { hoja.hidden = true; hoja.classList.remove('entrando'); }, 330);
+    try { history.replaceState(null, '', location.href.split('#')[0]); } catch (e) { /* sin historial */ }
+    if (focoPrevio && focoPrevio.focus) focoPrevio.focus({ preventScroll: true });
+    emitir('cerrar');
+  }
+  const mover = d => { if (!tipoActual) return; indice = (indice + d + lista.length) % lista.length; abrir(tipoActual, lista[indice]); };
+  btnPrev.addEventListener('click', () => mover(-1));
+  btnSig.addEventListener('click', () => mover(1));
+  $('#hoja-cerrar').addEventListener('click', cerrar);
+  cuerpo.addEventListener('click', e => { const b = e.target.closest('[data-ir]'); if (b) abrir('taller', b.dataset.ir); });
+  document.addEventListener('keydown', e => {
+    if (hoja.hidden) return;
+    if (e.key === 'Escape') cerrar();
+    else if (e.key === 'ArrowRight' && !e.target.closest('input')) mover(1);
+    else if (e.key === 'ArrowLeft' && !e.target.closest('input')) mover(-1);
+  });
+  // deslizar hacia abajo desde la cabecera para cerrar
+  let y0 = null;
+  $('.hoja-top').addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+  $('.hoja-top').addEventListener('touchend', e => { if (y0 !== null && e.changedTouches[0].clientY - y0 > 60) cerrar(); y0 = null; }, { passive: true });
+
+  $$('.tarjeta').forEach(b => b.addEventListener('click', () => abrir('taller', b.dataset.id)));
+  $$('.ruta').forEach(b => b.addEventListener('click', () => abrir('ruta', b.dataset.id)));
+
+  // ---------- filtros ----------
+  $$('.filtro').forEach(b => b.addEventListener('click', () => {
+    const f = b.dataset.area; est.filtro = f;
+    $$('.filtro').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    $$('.tarjeta').forEach(c => { c.hidden = f !== 'todas' && c.dataset.area !== f; });
+    $$('.nivel').forEach(n => { n.hidden = !$$('.tarjeta', n).some(c => !c.hidden); });
+    emitir('filtro', { area: f });
+    medir();
+  }));
+
+  // ---------- calculadora ----------
+  let precio = 20, personas = 5;
+  function calcular() {
+    $$('.seg button').forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.precio) === precio)));
+    $$('.asiento').forEach((b, i) => { b.classList.toggle('lleno', i < personas); b.setAttribute('aria-pressed', String(i === personas - 1)); });
+    const partes = repartir(precio, personas);
+    $('#pp').textContent = dinero(Math.round((precio * 100) / personas) / 100);
+    $('#reparto').textContent = personas === 1
+      ? `Si vas sin grupo, pagas el aula completa: ${dinero(precio)}.`
+      : partes.every(p => p === partes[0]) ? `${dinero(precio)} entre ${personas} personas.` : `${dinero(precio)} entre ${personas}, al centavo: ${partes.map(dinero).join(' + ')}.`;
+  }
+  $$('.seg button').forEach(b => b.addEventListener('click', () => { precio = Number(b.dataset.precio); calcular(); }));
+  $$('.asiento').forEach((b, i) => b.addEventListener('click', () => { personas = i + 1; calcular(); }));
+  calcular();
+
+  // ---------- sección visible → cámara ----------
+  const secciones = $$('[data-cam]');
+  let raf = 0;
+  function medir() {
+    raf = 0;
+    const mitad = innerHeight * 0.5; let mejor = null, dmin = Infinity;
+    for (const s of secciones) {
+      if (s.offsetParent === null) continue;
+      const r = s.getBoundingClientRect();
+      if (r.top <= mitad && r.bottom >= mitad) { mejor = s; break; }
+      const d = Math.min(Math.abs(r.top - mitad), Math.abs(r.bottom - mitad)); if (d < dmin) { dmin = d; mejor = s; }
+    }
+    const cam = mejor ? mejor.dataset.cam : 'hero';
+    if (cam !== est.seccion) { est.seccion = cam; emitir('seccion', { cam }); }
+  }
+  addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(medir); }, { passive: true });
+  addEventListener('resize', () => { if (!raf) raf = requestAnimationFrame(medir); });
+  medir();
+
+  window.Aula = { abrir, cerrar, estado: est, datos: D };
+  // si la escena 3D no carga (sin WebGL o sin conexión al CDN), la página sigue completa con un fondo plano
+  setTimeout(() => { if (!window.Escena) document.body.classList.add('sin3d'); }, 9000);
+
+  // enlace directo: #react abre ese taller, #r-python esa ruta
+  const desdeHash = () => { const h = decodeURIComponent(location.hash.slice(1)); if (T[h]) abrir('taller', h); else if (R[h]) abrir('ruta', h); };
+  addEventListener('hashchange', desdeHash);
+  desdeHash();
+})();
+
+</script>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js';
+// ============ utilidades 3D ============
+const TAU = Math.PI * 2;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const fract = x => x - Math.floor(x);
+const suave = t => t * t * (3 - 2 * t);
+const entradaSalida = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const rebote = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const salida = t => 1 - Math.pow(1 - t, 3);
+const tramo = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const botes = t => { const n1 = 7.5625, d1 = 2.75; if (t < 1 / d1) return n1 * t * t; if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75; if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375; return n1 * (t -= 2.625 / d1) * t + 0.984375; };
+
+const BLANCO = new THREE.Color('#f3f5fb');
+const OK = new THREE.Color('#7ee2a8');
+const MAL = new THREE.Color('#ff6b6b');
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+
+function texturaBrillo() {
+  const s = 128, cv = document.createElement('canvas'); cv.width = cv.height = s;
+  const g = cv.getContext('2d');
+  const grd = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.16, 'rgba(255,255,255,0.8)');
+  grd.addColorStop(0.42, 'rgba(255,255,255,0.2)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, s, s);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+}
+const BRILLO = texturaBrillo();
+const ADD = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false };
+
+function mSolido(color, k = 0.45, opacidad = 1) {
+  const c = new THREE.Color(color);
+  return new THREE.MeshStandardMaterial({ color: c.clone().multiplyScalar(0.5), emissive: c, emissiveIntensity: k, roughness: 0.34, metalness: 0.3, transparent: opacidad < 1, opacity: opacidad });
+}
+function mVidrio(color, opacidad = 0.15) { return new THREE.MeshBasicMaterial({ color, transparent: true, opacity: opacidad, depthWrite: false, side: THREE.DoubleSide }); }
+function mLinea(color, opacidad = 0.9) { return new THREE.LineBasicMaterial({ color, ...ADD, opacity: opacidad }); }
+function mPlano(color, opacidad = 1) { return new THREE.MeshBasicMaterial({ color, transparent: opacidad < 1, opacity: opacidad }); }
+function mLuz(color, opacidad = 0.9) { return new THREE.MeshBasicMaterial({ color, ...ADD, opacity: opacidad }); }
+function brillo(color, tam = 1, opacidad = 0.9) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: BRILLO, color, ...ADD, opacity: opacidad })); s.scale.setScalar(tam); return s; }
+function conBordes(geo, color, { k = 0.45, borde = color, bo = 0.9, solido = true, op = 1 } = {}) {
+  const g = new THREE.Group();
+  if (solido) g.add(new THREE.Mesh(geo, mSolido(color, k, op)));
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), mLinea(borde, bo)));
+  return g;
+}
+function geoPanel(w, h, d, r) {
+  const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+  r = Math.min(r, w / 2, h / 2);
+  s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+  const geo = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false, curveSegments: 5 });
+  geo.translate(0, 0, -d / 2); return geo;
+}
+function panel(w, h, d, r, color, op) { return conBordes(geoPanel(w, h, d, r), color, op); }
+function tubo(puntos, radio, color, opacidad = 0.9, cerrado = false) {
+  const curva = typeof puntos.getPoint === 'function' ? puntos : new THREE.CatmullRomCurve3(puntos, cerrado);
+  const m = new THREE.Mesh(new THREE.TubeGeometry(curva, 80, radio, 8, cerrado), mLuz(color, opacidad));
+  m.userData.curva = curva; return m;
+}
+function linea(puntos, color, opacidad = 0.8) {
+  const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(puntos), mLinea(color, opacidad));
+  l.frustumCulled = false; return l;
+}
+function fijarLinea(l, a, b) { const p = l.geometry.attributes.position; p.setXYZ(0, a.x, a.y, a.z); p.setXYZ(1, b.x, b.y, b.z); p.needsUpdate = true; }
+function marcaCheck(color, tam = 1) {
+  const g = new THREE.Group(), m = mLuz(color, 1);
+  const a = new THREE.Mesh(new THREE.BoxGeometry(0.34 * tam, 0.09 * tam, 0.09 * tam), m); a.rotation.z = -Math.PI / 4; a.position.set(-0.2 * tam, -0.02 * tam, 0);
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.72 * tam, 0.09 * tam, 0.09 * tam), m); b.rotation.z = Math.PI / 4; b.position.set(0.1 * tam, 0.13 * tam, 0);
+  g.add(a, b); return g;
+}
+// interpolación por fotogramas clave: [[t, Vector3], ...]
+function claves(t, kf, destino) {
+  if (t <= kf[0][0]) return destino.copy(kf[0][1]);
+  for (let i = 0; i < kf.length - 1; i++) {
+    const [t0, a] = kf[i], [t1, b] = kf[i + 1];
+    if (t <= t1) return destino.copy(a).lerp(b, entradaSalida((t - t0) / (t1 - t0 || 1)));
+  }
+  return destino.copy(kf[kf.length - 1][1]);
+}
+
+// ============ emblemas: uno por taller ============
+// Cada fábrica recibe el color del área y devuelve { g, up(t, dt) }. Miden unas 3 unidades.
+const EMBLEMAS = {
+  // GitHub: ramas que salen y se fusionan, con commits que se encienden
+  ramas(c) {
+    const g = new THREE.Group();
+    const N = 7, prin = [];
+    for (let i = 0; i < N; i++) prin.push(V(-0.5, -1.5 + i * 0.5, 0));
+    const rama = new THREE.CatmullRomCurve3([prin[1].clone(), V(0.05, -0.75, 0.2), V(0.62, -0.2, 0.28), V(0.62, 0.4, 0.28), V(0.1, 0.85, 0.15), prin[5].clone()]);
+    const recta = new THREE.LineCurve3(prin[0], prin[N - 1]);
+    g.add(tubo(recta, 0.04, c, 0.85), tubo(rama, 0.032, BLANCO, 0.55));
+    const esf = new THREE.SphereGeometry(0.13, 22, 16), commits = [];
+    prin.forEach((p, i) => { const m = new THREE.Mesh(esf, mSolido(c, 0.7)); m.position.copy(p); g.add(m); commits.push({ m, u: i / (N - 1), prin: true, s: 1 }); });
+    [0.28, 0.5, 0.72].forEach(u => { const m = new THREE.Mesh(esf, mSolido(BLANCO, 0.35)); m.position.copy(rama.getPoint(u)); g.add(m); commits.push({ m, u, prin: false, s: 0.85 }); });
+    const fusion = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.026, 10, 44), mLuz(c, 1)); fusion.position.copy(prin[5]); g.add(fusion);
+    const p1 = brillo(c, 0.9), p2 = brillo(BLANCO, 0.7); g.add(p1, p2);
+    // commit nuevo que aparece arriba
+    const nuevo = new THREE.Mesh(esf, mSolido(c, 1)); nuevo.position.copy(prin[N - 1]).add(V(0, 0.5, 0)); g.add(nuevo);
+    return { g, up(t) {
+      const a = fract(t * 0.3), b = fract(t * 0.3 + 0.4);
+      recta.getPoint(a, p1.position); rama.getPoint(b, p2.position);
+      commits.forEach(o => { const d = Math.abs((o.prin ? a : b) - o.u); o.m.scale.setScalar(o.s * (1 + 0.5 * Math.max(0, 1 - d * 9))); });
+      const cn = fract(t * 0.3); nuevo.scale.setScalar(cn > 0.85 ? rebote(tramo(cn, 0.85, 1)) : 0.001);
+      fusion.rotation.x = t * 1.4; fusion.rotation.y = t * 0.9;
+      g.rotation.y = Math.sin(t * 0.5) * 0.5;
+    } };
+  },
+
+  // HTML y CSS: la misma página que se reacomoda de escritorio a celular, con sus capas separadas
+  capas(c) {
+    const g = new THREE.Group(); g.rotation.set(-0.28, 0.5, 0);
+    const marcos = [[0.34, c, 0.06, false], [0.2, c, 0.12, true], [0.09, BLANCO, 0.06, true]].map(([pad, col, op, sol], i) => {
+      const pg = new THREE.Group(), geo = geoPanel(1, 1, 0.02, 0.05);
+      if (sol) pg.add(new THREE.Mesh(geo, mVidrio(col, op)));
+      pg.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), mLinea(col, i === 0 ? 0.4 : 0.85)));
+      g.add(pg); return { pg, pad };
+    });
+    const cont = new THREE.Group(); g.add(cont);
+    const cab = panel(1, 0.14, 0.05, 0.04, c, { k: 0.85 }); cont.add(cab);
+    const hero = panel(1, 0.34, 0.05, 0.05, BLANCO, { k: 0.2, bo: 0.55 }); cont.add(hero);
+    const tarjetas = [0, 1, 2].map(() => { const p = panel(0.5, 0.36, 0.07, 0.05, c, { k: 0.5 }); cont.add(p); return p; });
+    return { g, up(t) {
+      const k = suave(clamp(Math.sin(t * 0.55) * 0.9 + 0.5, 0, 1));
+      const W = lerp(2.0, 1.05, k), H = lerp(1.35, 2.25, k), e = (Math.sin(t * 1.1 + 1) + 1) / 2;
+      marcos.forEach(({ pg, pad }, i) => { pg.scale.set(W + pad * 2, H + pad * 2, 1); pg.position.z = -(3 - i) * (0.05 + e * 0.3); });
+      cont.position.z = 0.04;
+      cab.scale.x = W - 0.16; cab.position.set(0, H / 2 - 0.14, 0);
+      hero.scale.x = W - 0.16; hero.position.set(0, H / 2 - 0.44, 0);
+      tarjetas.forEach((p, i) => {
+        const rx = (i - 1) * ((W - 0.16) / 3), ry = H / 2 - 0.95, cy = H / 2 - 0.86 - i * 0.44;
+        p.position.set(lerp(rx, 0, k), lerp(ry, cy, k), 0.03 + Math.sin(t * 2 + i) * 0.02);
+        p.scale.x = lerp((W - 0.16) / 3 / 0.5 * 0.9, (W - 0.16) / 0.5, k);
+      });
+    } };
+  },
+
+  // Algoritmos: barras que se ordenan con burbuja, paso a paso
+  ordenar(c) {
+    const g = new THREE.Group(); g.rotation.x = -0.22;
+    const N = 8, geo = new THREE.BoxGeometry(0.22, 1, 0.22);
+    let orden = [];
+    const barras = [5, 2, 7, 1, 8, 3, 6, 4].map((v, i) => { const b = conBordes(geo, c, { k: 0.45, bo: 0.75 }); b.userData = { v, tx: (i - 3.5) * 0.32 }; b.position.x = b.userData.tx; b.scale.y = 0.3; g.add(b); orden.push(b); return b; });
+    const base = new THREE.Mesh(geoPanel(2.9, 0.55, 0.03, 0.08), mVidrio(c, 0.1)); base.rotation.x = -Math.PI / 2; base.position.y = -1.03; g.add(base);
+    const rayo = brillo(BLANCO, 1.3, 0); g.add(rayo);
+    let i = 0, j = 0, reloj = 0, fase = 'orden', espera = 0, cmp = [];
+    const mezclar = () => { const vs = [1, 2, 3, 4, 5, 6, 7, 8].sort(() => Math.random() - 0.5); orden.forEach((b, k) => { b.userData.v = vs[k]; }); i = 0; j = 0; fase = 'orden'; };
+    return { g, up(t, dt) {
+      reloj += dt;
+      if (fase === 'orden' && reloj > 0.3) {
+        reloj = 0;
+        if (i < N - 1) {
+          const a = orden[j], b = orden[j + 1]; cmp = [a, b];
+          if (a.userData.v > b.userData.v) { orden[j] = b; orden[j + 1] = a; }
+          j++; if (j >= N - 1 - i) { j = 0; i++; }
+        } else { fase = 'listo'; espera = 0; cmp = []; }
+      }
+      if (fase === 'listo') { espera += dt; if (espera > 2.4) mezclar(); }
+      orden.forEach((b, k) => { b.userData.tx = (k - 3.5) * 0.32; });
+      barras.forEach(b => {
+        b.position.x += (b.userData.tx - b.position.x) * Math.min(1, dt * 11);
+        const h = 0.25 + b.userData.v * 0.22; b.scale.y += (h - b.scale.y) * Math.min(1, dt * 7);
+        b.position.y = -1 + b.scale.y / 2;
+        const onda = fase === 'listo' ? Math.max(0, 1 - Math.abs(espera * 6 - (b.position.x + 1.3) * 2.2)) : 0;
+        b.children[0].material.emissiveIntensity = cmp.includes(b) ? 1.4 : 0.45 + onda;
+      });
+      if (cmp.length) { rayo.material.opacity = 0.7; rayo.position.set((cmp[0].position.x + cmp[1].position.x) / 2, 0.9, 0.2); } else rayo.material.opacity *= 0.9;
+      g.rotation.y = Math.sin(t * 0.3) * 0.35;
+    } };
+  },
+
+  // POO: una clase (plano) que crea instancias en órbita y hereda de otra
+  clases(c) {
+    const g = new THREE.Group();
+    const clase = new THREE.Group(); g.add(clase);
+    clase.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.05, 1.05, 1.05)), mLinea(c, 0.95)));
+    const nucleo = conBordes(new THREE.BoxGeometry(0.36, 0.36, 0.36), BLANCO, { k: 0.35 }); clase.add(nucleo, brillo(c, 1.8, 0.35));
+    const padre = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(0.62, 0.62, 0.62)), mLinea(BLANCO, 0.6)); padre.position.y = -1.45; g.add(padre);
+    g.add(linea([V(0, -0.53, 0), V(0, -1.02, 0)], BLANCO, 0.7));
+    const punta = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.16, 3), mLinea(BLANCO, 0.9)); punta.position.y = -1.06; punta.rotation.x = Math.PI; g.add(punta);
+    const tmp = V();
+    const inst = [0, 1, 2].map(() => { const m = conBordes(new THREE.BoxGeometry(0.34, 0.34, 0.34), c, { k: 0.7 }); const l = linea([V(), V()], c, 0.35); g.add(m, l); return { m, l }; });
+    return { g, up(t) {
+      clase.rotation.y = t * 0.4; clase.rotation.x = Math.sin(t * 0.3) * 0.2;
+      nucleo.rotation.set(t * 0.7, -t * 1.2, 0); padre.rotation.y = t * 0.25;
+      inst.forEach((o, k) => {
+        const ph = fract((t + k * 2.4) / 7.2), crece = ph < 0.14 ? rebote(ph / 0.14) : 1;
+        const a = t * 0.55 + k * TAU / 3, R = 1.4 * Math.min(1, crece);
+        tmp.set(Math.cos(a) * R, Math.sin(a) * 0.35 + 0.2, Math.sin(a) * R);
+        o.m.position.copy(tmp); o.m.scale.setScalar(Math.max(0.001, crece)); o.m.rotation.set(t, t * 0.7, 0);
+        fijarLinea(o.l, V(0, 0, 0), tmp);
+      });
+    } };
+  },
+
+  // SQL: una tabla que se consulta; las filas que cumplen suben y se unen con otra tabla
+  tabla(c) {
+    const g = new THREE.Group(); g.rotation.set(-0.5, 0.35, 0);
+    const F = 6, C = 4, cw = 0.44, ch = 0.2, sep = 0.06, celda = new THREE.BoxGeometry(cw, ch, 0.05);
+    const filas = [];
+    for (let r = 0; r < F; r++) {
+      const fila = new THREE.Group(), y = 0.62 - r * (ch + sep); fila.position.y = y;
+      const mat = r === 0 ? mSolido(c, 0.9) : mSolido(BLANCO, 0.1);
+      for (let k = 0; k < C; k++) { const m = new THREE.Mesh(celda, mat); m.position.x = (k - 1.5) * (cw + sep) - 0.4; fila.add(m); }
+      g.add(fila); filas.push({ fila, y, mat });
+    }
+    const t2 = new THREE.Group(); t2.position.set(1.45, -0.05, -0.2); g.add(t2);
+    const mat2 = mSolido(c, 0.35);
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(celda, r === 0 ? mSolido(c, 0.9) : mat2); m.scale.x = 0.7; m.position.set((k - 0.5) * 0.36, 0.3 - r * 0.26, 0); t2.add(m); }
+    const barrido = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.07), mLuz(c, 0.7)); g.add(barrido);
+    const aciertos = [2, 4];
+    const uniones = aciertos.map((r, i) => { const l = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(V(0.62, filas[r].y, 0.25), V(1.0, (filas[r].y + 0.1) / 2 + 0.2, 0.5), V(1.2, 0.04 - i * 0.26, -0.2)), 30, 0.014, 6), mLuz(c, 0)); g.add(l); return l; });
+    return { g, up(t) {
+      const ciclo = fract(t / 6.5), yb = lerp(0.7, -0.85, tramo(ciclo, 0, 0.45));
+      barrido.position.set(-0.4, yb, 0.06); barrido.material.opacity = ciclo < 0.45 ? 0.7 : 0;
+      const sube = suave(tramo(ciclo, 0.45, 0.58)) * (1 - suave(tramo(ciclo, 0.9, 1)));
+      filas.forEach((f, r) => {
+        const es = aciertos.includes(r), pasado = yb < f.y;
+        f.fila.position.z = es ? sube * 0.26 : 0;
+        if (r > 0) f.mat.emissiveIntensity = es && pasado ? 0.25 + sube * 0.9 : (Math.abs(yb - f.y) < 0.14 ? 0.5 : 0.1);
+      });
+      uniones.forEach(u => { u.material.opacity = sube * 0.9; });
+      g.rotation.y = 0.35 + Math.sin(t * 0.35) * 0.25;
+    } };
+  },
+
+  // MongoDB: documentos flotando que una agregación apila
+  documentos(c) {
+    const g = new THREE.Group();
+    const docs = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new THREE.Group();
+      d.add(panel(0.62, 0.8, 0.03, 0.07, BLANCO, { k: 0.07, bo: 0.5 }));
+      const n = 3 + (i % 2);
+      for (let f = 0; f < n; f++) { const w = 0.18 + ((i * 7 + f * 3) % 5) * 0.06; const b = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, 0.02), mPlano(f === 0 ? c : BLANCO, f === 0 ? 1 : 0.55)); b.position.set(-0.22 + w / 2, 0.27 - f * 0.14, 0.025); d.add(b); }
+      const a = (i / 7) * TAU;
+      d.userData = { nube: V(Math.cos(a) * 1.25, Math.sin(i * 1.7) * 0.6, Math.sin(a) * 0.9), rx: ((i % 3) - 1) * 0.4, ry: a, rz: (i % 2) * 0.3 };
+      g.add(d); docs.push(d);
+    }
+    const anillos = [0, 1].map(k => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.02, 8, 50), mLuz(c, 0.8)); r.position.y = 0.45 - k * 0.7; r.rotation.x = Math.PI / 2; g.add(r); return r; });
+    return { g, up(t) {
+      const ciclo = fract(t / 7), k = suave(tramo(ciclo, 0.35, 0.58)) * (1 - suave(tramo(ciclo, 0.86, 1)));
+      docs.forEach((d, i) => {
+        const u = d.userData, bob = Math.sin(t * 1.2 + i) * 0.08;
+        d.position.set(lerp(u.nube.x, 0, k), lerp(u.nube.y + bob, -0.95 + i * 0.07, k), lerp(u.nube.z, 0, k));
+        d.rotation.set(lerp(u.rx + Math.sin(t * 0.5 + i) * 0.2, -Math.PI / 2, k), lerp(u.ry + t * 0.2, 0, k), lerp(u.rz, 0, k));
+      });
+      anillos.forEach((r, i) => { r.scale.setScalar(1 + Math.sin(t * 2 + i) * 0.05); r.material.opacity = 0.35 + 0.6 * k; });
+      g.rotation.y = Math.sin(t * 0.25) * 0.3;
+    } };
+  },
+
+  // APIs: un cliente que pide y un servidor que responde, sin parar
+  api(c, P = {}) {
+    const g = new THREE.Group();
+    const cliente = panel(0.64, 1.02, 0.05, 0.08, BLANCO, { k: 0.08, bo: 0.6 }); cliente.position.set(-1.3, 0, 0); g.add(cliente);
+    [0.3, 0.12, -0.06, -0.24].forEach((y, i) => { const b = new THREE.Mesh(new THREE.BoxGeometry(i === 0 ? 0.42 : 0.3 + (i % 2) * 0.1, 0.06, 0.02), mPlano(i === 0 ? c : BLANCO, i === 0 ? 1 : 0.45)); b.position.set(-1.3 - (i === 0 ? 0 : 0.05), y, 0.035); g.add(b); });
+    const geo = P.nucleo === 'octa' ? new THREE.OctahedronGeometry(0.46) : P.nucleo === 'dodeca' ? new THREE.DodecahedronGeometry(0.44) : new THREE.IcosahedronGeometry(0.46, 0);
+    const nucleo = conBordes(geo, c, { k: 0.55 }); nucleo.position.set(1.15, 0, 0); g.add(nucleo);
+    const a1 = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.016, 8, 60), mLuz(c, 0.8)), a2 = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.012, 8, 60), mLuz(BLANCO, 0.45));
+    a1.position.copy(nucleo.position); a2.position.copy(nucleo.position); g.add(a1, a2);
+    const halo = brillo(c, 2.2, 0.4); halo.position.copy(nucleo.position); g.add(halo);
+    const ida = new THREE.QuadraticBezierCurve3(V(-0.95, 0.22, 0), V(0, 1.0, 0.25), V(0.72, 0.22, 0));
+    const vuelta = new THREE.QuadraticBezierCurve3(V(0.72, -0.22, 0), V(0, -1.0, 0.25), V(-0.95, -0.22, 0));
+    g.add(tubo(ida, 0.012, c, 0.35), tubo(vuelta, 0.012, BLANCO, 0.25));
+    const pedidos = [0, 1, 2].map(() => { const m = conBordes(new THREE.BoxGeometry(0.15, 0.15, 0.15), c, { k: 1 }); g.add(m); return m; });
+    const respuestas = [0, 1, 2].map(() => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), mPlano(BLANCO)); m.add(brillo(BLANCO, 0.5, 0.6)); g.add(m); return m; });
+    return { g, up(t) {
+      let golpe = 0;
+      pedidos.forEach((m, i) => { const u = fract(t * 0.35 + i / 3); ida.getPoint(u, m.position); m.rotation.set(t * 2, t * 1.5, 0); m.scale.setScalar(u > 0.9 ? 1 - tramo(u, 0.9, 1) : 1); golpe = Math.max(golpe, 1 - Math.min(1, (1 - u) * 10)); });
+      respuestas.forEach((m, i) => { const u = fract(t * 0.35 + i / 3 + 0.5); vuelta.getPoint(u, m.position); });
+      nucleo.rotation.set(t * 0.35, t * 0.7, 0); nucleo.scale.setScalar(1 + 0.12 * golpe);
+      a1.rotation.set(t * 0.8, 0, 0); a2.rotation.set(0, t * 0.6, Math.PI / 3);
+      halo.material.opacity = 0.35 + 0.35 * golpe;
+      g.rotation.y = Math.sin(t * 0.4) * 0.35;
+    } };
+  },
+
+  // React: árbol de componentes; un cambio de estado baja y cada componente se vuelve a pintar
+  componentes(c) {
+    const g = new THREE.Group();
+    const P = [[0, 1.05], [-0.78, 0.15], [0.78, 0.15], [-1.18, -0.8], [-0.38, -0.8], [0.78, -0.8]];
+    const padre = [-1, 0, 0, 1, 1, 2];
+    const nodos = P.map(([x, y], i) => { const p = panel(i === 0 ? 0.82 : 0.62, 0.36, 0.06, 0.07, i === 0 ? c : BLANCO, { k: i === 0 ? 0.6 : 0.12, bo: 0.85 }); p.position.set(x, y, 0); g.add(p); return p; });
+    padre.forEach((pi, i) => { if (pi < 0) return; const a = nodos[pi].position, b = nodos[i].position, ym = (a.y + b.y) / 2; g.add(linea([V(a.x, a.y - 0.18, 0), V(a.x, ym, 0), V(b.x, ym, 0), V(b.x, b.y + 0.18, 0)], c, 0.55)); });
+    const chispa = brillo(c, 0.8, 1); g.add(chispa);
+    const ramas = [[0, 1, 3], [0, 2, 5], [0, 1, 4]];
+    return { g, up(t) {
+      const ciclo = t / 2.6, br = ramas[Math.floor(ciclo) % 3], u = fract(ciclo);
+      const seg = Math.min(1.999, u * 2.3), s0 = Math.floor(seg), f = seg - s0;
+      const A = nodos[br[s0]].position, B = nodos[br[Math.min(2, s0 + 1)]].position;
+      chispa.position.set(lerp(A.x, B.x, f), lerp(A.y, B.y, f), 0.12);
+      nodos.forEach(n => { n.rotation.y = 0; n.scale.setScalar(1); });
+      br.forEach((ni, k) => { const d = u - k / 2.3; if (d > 0 && d < 0.3) { nodos[ni].rotation.y = entradaSalida(d / 0.3) * TAU; nodos[ni].scale.setScalar(1 + Math.sin(d / 0.3 * Math.PI) * 0.12); } });
+      g.rotation.y = Math.sin(t * 0.35) * 0.4;
+    } };
+  },
+
+  // Programación funcional: un tubo donde los datos se transforman (map), se filtran (filter) y se reducen (reduce)
+  pipeline(c) {
+    const g = new THREE.Group(); g.rotation.set(0.22, -0.4, 0);
+    const vid = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 3.3, 32, 1, true), mVidrio(c, 0.07)); vid.rotation.z = Math.PI / 2; g.add(vid);
+    const puertas = [-0.75, 0.15, 1.0].map(x => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.03, 10, 50), mLuz(c, 0.9)); r.rotation.y = Math.PI / 2; r.position.x = x; g.add(r); return r; });
+    const colores = [c, BLANCO, new THREE.Color('#7cc8ff'), new THREE.Color('#ffd166')];
+    const items = [0, 1, 2, 3, 4, 5].map(i => {
+      const it = new THREE.Group();
+      const cubo = conBordes(new THREE.BoxGeometry(0.2, 0.2, 0.2), colores[i % 4], { k: 0.6 });
+      const esfera = new THREE.Mesh(new THREE.SphereGeometry(0.12, 18, 14), mSolido(c, 0.9));
+      it.add(cubo, esfera); g.add(it); return { it, cubo, esfera, cae: i % 3 === 1 };
+    });
+    const acum = new THREE.Mesh(new THREE.SphereGeometry(0.3, 26, 20), mSolido(c, 0.8)); acum.position.x = 1.5; acum.add(brillo(c, 1.4, 0.5)); g.add(acum);
+    return { g, up(t) {
+      let llega = 0;
+      items.forEach((o, i) => {
+        const u = fract(t * 0.15 + i / 6), x = lerp(-1.75, 1.5, u), mapeado = x > -0.75, fuera = o.cae && x > 0.15;
+        o.cubo.visible = !mapeado; o.esfera.visible = mapeado;
+        const y = fuera ? -Math.pow(x - 0.15, 2) * 3.2 : 0;
+        o.it.position.set(x, y, 0);
+        let s = x < -1.55 ? tramo(x, -1.75, -1.55) : 1; if (fuera) s *= Math.max(0.01, 1 - (x - 0.15) * 1.3); if (x > 1.2) { s *= Math.max(0.01, 1 - (x - 1.2) * 3.5); llega = Math.max(llega, 1 - (1.5 - x) / 0.3); }
+        o.it.scale.setScalar(Math.max(0.001, s)); o.cubo.rotation.set(t * 1.3, t, 0);
+      });
+      acum.scale.setScalar(1 + 0.18 * llega);
+      puertas.forEach((p, i) => { p.scale.setScalar(1 + 0.06 * Math.sin(t * 3 + i * 2)); });
+    } };
+  },
+
+  // Estructuras: un heap que acomoda su nuevo elemento y un reloj que mide la mejora
+  heap(c) {
+    const g = new THREE.Group();
+    const S = [V(0, 1.0), V(-0.8, 0.25), V(0.8, 0.25), V(-1.2, -0.5), V(-0.4, -0.5), V(0.4, -0.5), V(1.2, -0.5)];
+    [[0, 1], [0, 2], [1, 3], [1, 4], [2, 5], [2, 6]].forEach(([a, b]) => g.add(linea([S[a], S[b]], c, 0.45)));
+    const esf = new THREE.SphereGeometry(0.17, 22, 16);
+    const nodos = [0, 1, 2, 3, 4, 5, 6].map(i => { const m = new THREE.Mesh(esf, mSolido(i === 6 ? BLANCO : c, i === 6 ? 0.9 : 0.5)); g.add(m); return { m, slot: i }; });
+    const reloj = new THREE.Mesh(new THREE.TorusGeometry(1.75, 0.014, 6, 90, TAU * 0.72), mLuz(c, 0.5)); reloj.position.y = 0.15; g.add(reloj);
+    const aguja = brillo(BLANCO, 0.5, 1); g.add(aguja);
+    const tmp = V();
+    return { g, up(t) {
+      const T = fract(t / 5.2) * 5.2, nuevo = nodos[6];
+      // burbuja hacia arriba: 6 ↔ 2, luego 2 ↔ 0
+      const s1 = entradaSalida(tramo(T, 1.2, 1.9)), s2 = entradaSalida(tramo(T, 2.2, 2.9));
+      nodos.forEach((n, i) => {
+        if (i === 6) tmp.copy(S[6]).lerp(S[2], s1).lerp(S[0], s2);
+        else if (i === 2) tmp.copy(S[2]).lerp(S[6], s1);
+        else if (i === 0) tmp.copy(S[0]).lerp(S[2], s2);
+        else tmp.copy(S[i]);
+        n.m.position.copy(tmp);
+      });
+      nuevo.m.scale.setScalar(T < 1 ? Math.max(0.001, rebote(tramo(T, 0.1, 1))) : T > 4.6 ? Math.max(0.001, 1 - tramo(T, 4.6, 5.1)) : 1 + (T > 3 && T < 4.2 ? Math.sin((T - 3) / 1.2 * Math.PI) * 0.35 : 0));
+      const ang = -t * 1.2; aguja.position.set(Math.cos(ang) * 1.75, Math.sin(ang) * 1.75 + 0.15, 0);
+      reloj.rotation.z = -t * 1.2 - TAU * 0.72 + 0.2;
+      g.rotation.y = Math.sin(t * 0.35) * 0.4;
+    } };
+  },
+
+  // OAuth2: pedir el token, recibir la llave y abrir la API
+  llave(c) {
+    const g = new THREE.Group();
+    const U = V(-1.25, -0.65, 0), I = V(0, 0.95, 0), A = V(1.25, -0.65, 0);
+    [[U, I], [I, A], [U, A]].forEach(([a, b]) => g.add(linea([a, b], BLANCO, 0.18)));
+    const usuario = new THREE.Mesh(new THREE.SphereGeometry(0.2, 22, 16), mSolido(BLANCO, 0.4)); usuario.position.copy(U); g.add(usuario);
+    const idp = conBordes(new THREE.OctahedronGeometry(0.4), c, { k: 0.6 }); idp.position.copy(I);
+    const haloIdp = brillo(c, 2, 0.4); haloIdp.position.copy(I); g.add(idp, haloIdp);
+    const api = conBordes(new THREE.BoxGeometry(0.62, 0.5, 0.4), BLANCO, { k: 0.15 }); api.position.copy(A); g.add(api);
+    const argolla = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.035, 10, 30, Math.PI), mLuz(c, 1)); argolla.position.copy(A).add(V(0, 0.28, 0)); g.add(argolla);
+    const llave = new THREE.Group();
+    const mk = mLuz(c, 1);
+    const ojo = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 10, 30), mk); ojo.position.x = -0.2;
+    const cana = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.05), mk); cana.position.x = 0.06;
+    const d1 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.05), mk); d1.position.set(0.14, -0.06, 0);
+    const d2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, 0.05), mk); d2.position.set(0.21, -0.045, 0);
+    llave.add(ojo, cana, d1, d2, brillo(c, 0.9, 0.7)); g.add(llave);
+    const pedido = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), mPlano(BLANCO)); pedido.add(brillo(BLANCO, 0.45, 0.8)); g.add(pedido);
+    const tmp = V();
+    return { g, up(t) {
+      const T = fract(t / 6.2) * 6.2;
+      pedido.visible = T < 1.2; tmp.copy(U).lerp(I, entradaSalida(tramo(T, 0, 1.2))); pedido.position.copy(tmp);
+      claves(T, [[1.2, I], [2.2, I], [3.3, U], [3.6, U], [4.8, A.clone().add(V(-0.1, 0.02, 0.3))]], llave.position);
+      llave.scale.setScalar(T < 1.2 ? 0.001 : T < 2.0 ? rebote(tramo(T, 1.2, 2.0)) : T > 5.7 ? 1 - tramo(T, 5.7, 6.2) : 1);
+      llave.rotation.set(0, T < 2.2 ? t * 3 : 0, Math.sin(t * 2) * 0.15);
+      const abre = suave(tramo(T, 4.8, 5.2)) * (1 - suave(tramo(T, 5.8, 6.2)));
+      argolla.position.y = A.y + 0.28 + abre * 0.18; argolla.rotation.y = abre * 1.2;
+      api.children[0].material.emissiveIntensity = 0.15 + abre * 0.9; api.children[0].material.emissive.copy(abre > 0.1 ? c : BLANCO);
+      idp.rotation.y = t * 0.8; idp.scale.setScalar(1 + (T > 1.1 && T < 1.6 ? Math.sin(tramo(T, 1.1, 1.6) * Math.PI) * 0.2 : 0));
+      g.rotation.y = Math.sin(t * 0.3) * 0.35;
+    } };
+  },
+
+  // Linux: un rack de servidores con luces vivas y un firewall girando
+  servidor(c) {
+    const g = new THREE.Group(); g.rotation.set(-0.12, -0.5, 0);
+    const leds = [];
+    for (let i = 0; i < 5; i++) {
+      const b = conBordes(new THREE.BoxGeometry(1.5, 0.22, 0.9), BLANCO, { k: 0.05, bo: 0.5 }); b.position.y = -0.62 + i * 0.3; g.add(b);
+      for (let k = 0; k < 3; k++) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), mPlano(k === 0 ? OK : c, 0.99)); l.position.set(-0.6 + k * 0.1, b.position.y, 0.46); g.add(l); const h = brillo(k === 0 ? OK : c, 0.22, 0.8); h.position.copy(l.position); g.add(h); leds.push({ l, h, f: Math.random() * TAU, v: 2 + Math.random() * 5 }); }
+      const ranura = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.03, 0.01), mPlano(BLANCO, 0.25)); ranura.position.set(0.3, b.position.y, 0.455); g.add(ranura);
+    }
+    const escaneo = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.035), mLuz(c, 0.8)); escaneo.position.z = 0.5; g.add(escaneo);
+    const arcos = [0, 1, 2].map(k => { const a = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.022, 8, 40, TAU / 5), mLuz(c, 0.85)); a.rotation.x = Math.PI / 2; a.userData.k = k; g.add(a); return a; });
+    return { g, up(t) {
+      leds.forEach(o => { const on = Math.sin(t * o.v + o.f) > 0.1 ? 1 : 0.15; o.l.material.opacity = on; o.h.material.opacity = on * 0.8; });
+      escaneo.position.y = Math.sin(t * 1.3) * 0.72;
+      arcos.forEach(a => { a.rotation.z = t * 0.7 + a.userData.k * TAU / 3; });
+    } };
+  },
+
+  // Docker: contenedores que caen, se apilan y un anillo los orquesta
+  contenedores(c) {
+    const g = new THREE.Group(); g.rotation.set(-0.25, 0.55, 0);
+    const cajas = [];
+    for (let i = 0; i < 6; i++) {
+      const col = i % 2 ? BLANCO : c, cj = new THREE.Group();
+      cj.add(conBordes(new THREE.BoxGeometry(0.95, 0.34, 0.44), col, { k: i % 2 ? 0.12 : 0.45, bo: 0.8 }));
+      const costillas = []; for (let k = -3; k <= 3; k++) costillas.push(V(k * 0.12, -0.15, 0.225), V(k * 0.12, 0.15, 0.225));
+      cj.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(costillas), mLinea(col, 0.35)));
+      cj.userData = { x: (i % 2 ? 0.5 : -0.5), y: -0.8 + Math.floor(i / 2) * 0.38 };
+      g.add(cj); cajas.push(cj);
+    }
+    const anillo = new THREE.Mesh(new THREE.TorusGeometry(1.45, 0.03, 10, 70), mLuz(c, 0.9)); anillo.rotation.x = Math.PI / 2; g.add(anillo);
+    return { g, up(t) {
+      const T = fract(t / 7.5) * 7.5;
+      cajas.forEach((cj, i) => {
+        const t0 = 0.2 + i * 0.42, u = tramo(T, t0, t0 + 0.7), sube = tramo(T, 6.4, 7.3);
+        cj.position.set(cj.userData.x, lerp(2.3, cj.userData.y, botes(u)) + sube * 2.4, 0);
+        cj.scale.setScalar(T < t0 ? 0.001 : 1); cj.visible = u > 0;
+      });
+      const on = suave(tramo(T, 3.1, 3.8)) * (1 - tramo(T, 6.2, 6.6));
+      anillo.scale.setScalar(0.6 + on * 0.4); anillo.material.opacity = on * 0.9; anillo.position.y = -0.2; anillo.rotation.z = t;
+    } };
+  },
+
+  // CI/CD: un bucle infinito donde cada cambio pasa por build, pruebas y despliegue
+  bucle(c) {
+    const g = new THREE.Group(); g.rotation.x = -0.55;
+    const pts = []; for (let i = 0; i < 80; i++) { const a = (i / 80) * TAU, d = 1 + Math.sin(a) ** 2; pts.push(V(1.55 * Math.cos(a) / d, 0, 1.55 * Math.sin(a) * Math.cos(a) / d * 1.3)); }
+    const curva = new THREE.CatmullRomCurve3(pts, true);
+    g.add(tubo(curva, 0.04, c, 0.7, true));
+    const estaciones = [0.1, 0.38, 0.62, 0.9].map(u => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.025, 10, 32), mLuz(BLANCO, 0.9)); curva.getPoint(u, r.position); r.lookAt(curva.getPoint(fract(u + 0.01))); r.userData.u = u; g.add(r); return r; });
+    const check = marcaCheck(OK, 0.7); check.position.copy(estaciones[1].position).add(V(0, 0.5, 0)); g.add(check);
+    const paquetes = [0, 1, 2, 3, 4].map(() => { const m = conBordes(new THREE.BoxGeometry(0.13, 0.13, 0.13), c, { k: 1 }); g.add(m); return m; });
+    return { g, up(t) {
+      let pasa = 0;
+      paquetes.forEach((m, i) => { const u = fract(t * 0.1 + i / 5); curva.getPoint(u, m.position); m.rotation.set(t * 2, t, 0); const d = Math.abs(u - estaciones[1].userData.u); pasa = Math.max(pasa, 1 - d * 25); });
+      estaciones.forEach(r => { let cerca = 0; paquetes.forEach((m, i) => { cerca = Math.max(cerca, 1 - Math.abs(fract(t * 0.1 + i / 5) - r.userData.u) * 30); }); r.scale.setScalar(1 + Math.max(0, cerca) * 0.6); });
+      check.scale.setScalar(Math.max(0.001, pasa) * 1.0); check.rotation.y = -g.rotation.y;
+      g.rotation.y = t * 0.15;
+    } };
+  },
+
+  // Seguridad: un escudo que detecta y detiene ataques
+  escudo(c) {
+    const g = new THREE.Group();
+    const esc = new THREE.Group(); g.add(esc);
+    const hex = conBordes(new THREE.CylinderGeometry(1.0, 1.0, 0.16, 6), c, { k: 0.3, op: 0.9 }); hex.rotation.x = Math.PI / 2; esc.add(hex);
+    const int = conBordes(new THREE.CylinderGeometry(0.62, 0.62, 0.2, 6), BLANCO, { k: 0.15 }); int.rotation.x = Math.PI / 2; int.position.z = 0.05; esc.add(int);
+    const chk = marcaCheck(c, 0.9); chk.position.z = 0.2; esc.add(chk);
+    const ondas = [0, 1].map(() => { const r = new THREE.Mesh(new THREE.TorusGeometry(1, 0.02, 8, 6), mLuz(c, 0.8)); r.rotation.z = Math.PI / 6; g.add(r); return r; });
+    const ataques = [0, 1, 2, 3, 4, 5].map(i => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), mPlano(MAL)); const h = brillo(MAL, 0.4, 0.9); m.add(h); g.add(m); const a = (i / 6) * TAU + 0.3; return { m, dir: V(Math.cos(a), Math.sin(a) * 0.8, 0.6 + (i % 2) * 0.4).normalize(), f: i / 6 }; });
+    const choque = brillo(MAL, 1, 0); g.add(choque);
+    return { g, up(t) {
+      ondas.forEach((r, i) => { const u = fract(t * 0.45 + i * 0.5); r.scale.setScalar(0.9 + u * 1.1); r.material.opacity = (1 - u) * 0.8; });
+      let imp = 0;
+      ataques.forEach(o => { const u = fract(t * 0.32 + o.f); const d = lerp(3.2, 1.08, suave(u)); o.m.position.copy(o.dir).multiplyScalar(d); o.m.scale.setScalar(u > 0.93 ? 1 - tramo(u, 0.93, 1) : 1); if (u > 0.9) { imp = Math.max(imp, 1 - tramo(u, 0.9, 1)); choque.position.copy(o.m.position); } });
+      choque.material.opacity = imp * 0.9; choque.scale.setScalar(0.6 + (1 - imp) * 0.8);
+      esc.rotation.y = Math.sin(t * 0.5) * 0.4; esc.scale.setScalar(1 + imp * 0.03);
+    } };
+  },
+
+  // RabbitMQ: productor, cola y consumidores que reciben por turnos
+  mensajes(c) {
+    const g = new THREE.Group();
+    const P = V(-1.5, 0, 0), Q0 = V(-0.85, 0, 0), Q1 = V(0.35, 0, 0), X = V(0.8, 0, 0), C = [V(1.55, 0.72, 0), V(1.65, 0, 0), V(1.55, -0.72, 0)];
+    const prod = new THREE.Mesh(new THREE.SphereGeometry(0.2, 22, 16), mSolido(BLANCO, 0.4)); prod.position.copy(P); g.add(prod);
+    const cola = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.3, 24, 1, true), mVidrio(c, 0.14)); cola.rotation.z = Math.PI / 2; cola.position.set(-0.25, 0, 0); g.add(cola);
+    [-0.9, 0.4].forEach(x => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.018, 8, 36), mLuz(c, 0.8)); r.rotation.y = Math.PI / 2; r.position.x = x; g.add(r); });
+    const inter = conBordes(new THREE.OctahedronGeometry(0.2), c, { k: 0.7 }); inter.position.copy(X); g.add(inter);
+    const cons = C.map(p => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 14), mSolido(c, 0.4)); m.position.copy(p); g.add(m); g.add(linea([X, p], c, 0.25)); return m; });
+    const curvas = C.map(p => new THREE.QuadraticBezierCurve3(X.clone(), V((X.x + p.x) / 2, p.y * 0.6, 0.2), p.clone()));
+    const msj = [0, 1, 2, 3, 4, 5].map(() => { const m = conBordes(new THREE.BoxGeometry(0.13, 0.13, 0.13), c, { k: 0.9 }); g.add(m); return m; });
+    const recibe = [0, 0, 0];
+    return { g, up(t) {
+      recibe.fill(0);
+      msj.forEach((m, i) => {
+        const u = fract(t * 0.16 + i / 6), k = i % 3;
+        if (u < 0.15) m.position.copy(P).lerp(Q0, u / 0.15);
+        else if (u < 0.72) m.position.copy(Q0).lerp(Q1, (u - 0.15) / 0.57);
+        else if (u < 0.8) m.position.copy(Q1).lerp(X, (u - 0.72) / 0.08);
+        else { const f = (u - 0.8) / 0.2; curvas[k].getPoint(f, m.position); if (f > 0.85) recibe[k] = Math.max(recibe[k], (f - 0.85) / 0.15); }
+        m.rotation.set(t * 2, t, 0); m.scale.setScalar(u > 0.97 ? 1 - tramo(u, 0.97, 1) : 1);
+      });
+      cons.forEach((m, k) => { m.material.emissiveIntensity = 0.4 + recibe[k] * 1.2; m.scale.setScalar(1 + recibe[k] * 0.25); });
+      inter.rotation.set(t, t * 0.6, 0);
+      g.rotation.y = Math.sin(t * 0.35) * 0.35;
+    } };
+  },
+
+  // Tiempo real: un centro que emite y tres pantallas que se actualizan a la vez
+  ondas(c) {
+    const g = new THREE.Group(); g.rotation.x = 0.35;
+    const hub = new THREE.Mesh(new THREE.SphereGeometry(0.26, 26, 20), mSolido(c, 0.8)); hub.add(brillo(c, 1.6, 0.6)); g.add(hub);
+    const anillos = [0, 1, 2].map(() => { const r = new THREE.Mesh(new THREE.TorusGeometry(1, 0.018, 8, 70), mLuz(c, 0.8)); r.rotation.x = Math.PI / 2; g.add(r); return r; });
+    const pantallas = [0, 1, 2].map(k => {
+      const a = (k / 3) * TAU + Math.PI / 2, p = new THREE.Group();
+      p.position.set(Math.cos(a) * 1.45, 0, Math.sin(a) * 1.45); p.lookAt(0, 0, 0); p.rotateY(Math.PI);
+      p.add(panel(0.72, 0.5, 0.04, 0.06, BLANCO, { k: 0.08, bo: 0.6 }));
+      const barra = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.02), mPlano(c)); barra.position.set(0, -0.08, 0.03); p.add(barra);
+      const tit = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.02), mPlano(BLANCO, 0.6)); tit.position.set(-0.1, 0.12, 0.03); p.add(tit);
+      g.add(p); return { p, barra };
+    });
+    return { g, up(t) {
+      anillos.forEach((r, i) => { const u = fract(t * 0.6 + i / 3); r.scale.setScalar(0.25 + u * 1.25); r.material.opacity = (1 - u) * 0.85; });
+      const paso = Math.floor(t / 1.6), f = tramo(fract(t / 1.6), 0, 0.25), val = 0.25 + (Math.sin(paso * 12.9898) * 0.5 + 0.5) * 0.75;
+      pantallas.forEach(o => { o.barra.scale.x += (val - o.barra.scale.x) * 0.15; o.barra.position.x = -0.25 + o.barra.scale.x * 0.25; o.p.scale.setScalar(1 + (1 - f) * 0.05); });
+      g.rotation.y = t * 0.25;
+    } };
+  },
+
+  // App móvil: un celular con capas de interfaz que salen de la pantalla y una notificación
+  movil(c) {
+    const g = new THREE.Group();
+    const tel = new THREE.Group(); g.add(tel);
+    tel.add(conBordes(geoPanel(1.05, 2.05, 0.1, 0.18), BLANCO, { k: 0.04, borde: c, bo: 0.9 }));
+    const pant = new THREE.Mesh(geoPanel(0.92, 1.86, 0.01, 0.12), mVidrio(c, 0.14)); pant.position.z = 0.06; tel.add(pant);
+    const capas = [[0, 0.55, 0.78, 0.3, c], [0, 0.08, 0.78, 0.44, BLANCO], [0, -0.55, 0.6, 0.18, c]].map(([x, y, w, h, col], i) => { const p = panel(w, h, 0.04, 0.06, col, { k: col === c ? 0.6 : 0.1, bo: 0.8 }); p.position.set(x, y, 0.1); tel.add(p); return p; });
+    const noti = panel(0.8, 0.22, 0.05, 0.09, c, { k: 0.9 }); tel.add(noti);
+    return { g, up(t) {
+      tel.rotation.set(-0.12 + Math.sin(t * 0.5) * 0.08, Math.sin(t * 0.6) * 0.55, 0);
+      const e = 0.5 + 0.5 * Math.sin(t * 0.9);
+      capas.forEach((p, i) => { p.position.z = 0.1 + (i + 1) * 0.16 * e; });
+      const u = fract(t / 3.2); noti.position.set(0, 1.0 + u * 0.6, 0.2 + u * 0.3); noti.scale.setScalar(u < 0.15 ? rebote(u / 0.15) : 1 - tramo(u, 0.75, 1));
+    } };
+  },
+
+  // Next.js: el servidor arma páginas y las entrega listas al navegador
+  render(c) {
+    const g = new THREE.Group(); g.rotation.y = -0.25;
+    const serv = new THREE.Group(); serv.position.set(-1.25, -0.2, 0); g.add(serv);
+    [0, 1, 2].forEach(i => { const b = conBordes(new THREE.BoxGeometry(0.66, 0.22, 0.6), BLANCO, { k: 0.06, bo: 0.55 }); b.position.y = i * 0.28; serv.add(b); const l = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.01), mPlano(c, 0.99)); l.position.set(-0.1, i * 0.28, 0.305); serv.add(l); });
+    const nav = new THREE.Group(); nav.position.set(1.0, 0.05, 0); g.add(nav);
+    nav.add(panel(1.25, 0.95, 0.04, 0.08, BLANCO, { k: 0.05, bo: 0.7 }));
+    const barraSup = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.02), mPlano(c, 0.8)); barraSup.position.set(0, 0.36, 0.03); nav.add(barraSup);
+    const contenido = [0, 1, 2].map(i => { const b = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.02), mPlano(i === 0 ? c : BLANCO, i === 0 ? 0.9 : 0.4)); b.position.set(-0.05, 0.15 - i * 0.2, 0.03); b.scale.x = 0.001; nav.add(b); return b; });
+    const arco = new THREE.QuadraticBezierCurve3(V(-1.25, 0.65, 0), V(-0.1, 1.5, 0.3), V(0.95, 0.1, 0.1));
+    const paginas = [0, 1].map(() => { const p = panel(0.46, 0.34, 0.03, 0.05, c, { k: 0.6 }); g.add(p); return p; });
+    return { g, up(t) {
+      const T = fract(t / 3.4);
+      paginas.forEach((p, i) => { const u = fract(T + i * 0.5); arco.getPoint(u, p.position); p.scale.setScalar(u < 0.12 ? rebote(u / 0.12) : u > 0.88 ? 1 - tramo(u, 0.88, 1) : 1); p.rotation.set(0, (1 - u) * 0.6, Math.sin(u * Math.PI) * 0.2); });
+      contenido.forEach((b, i) => { const k = suave(tramo(T, 0.2 + i * 0.12, 0.5 + i * 0.12)); b.scale.x = Math.max(0.001, k); b.position.x = -0.5 + 0.45 * k; });
+      serv.children.forEach((m, i) => { if (m.isMesh) m.material.opacity = 0.6 + 0.4 * Math.sin(t * 6 + i); });
+    } };
+  },
+
+  // TypeScript: cada pieza entra solo en su molde; la equivocada rebota
+  tipos(c) {
+    const g = new THREE.Group(); g.rotation.set(-0.15, 0.35, 0);
+    const tablero = panel(2.4, 1.0, 0.06, 0.1, BLANCO, { k: 0.04, bo: 0.4 }); tablero.position.z = -0.25; g.add(tablero);
+    const X = [-0.75, 0, 0.75];
+    const moldes = [];
+    const cuad = [V(-0.2, -0.2), V(0.2, -0.2), V(0.2, 0.2), V(-0.2, 0.2), V(-0.2, -0.2)];
+    const circ = []; for (let i = 0; i <= 40; i++) { const a = (i / 40) * TAU; circ.push(V(Math.cos(a) * 0.2, Math.sin(a) * 0.2)); }
+    const tri = [V(0, 0.24), V(0.22, -0.16), V(-0.22, -0.16), V(0, 0.24)];
+    [cuad, circ, tri].forEach((pts, i) => { const l = linea(pts.map(p => p.clone().add(V(X[i], 0, -0.2))), BLANCO, 0.85); g.add(l); moldes.push(l); });
+    const cubo = conBordes(new THREE.BoxGeometry(0.36, 0.36, 0.36), c, { k: 0.6 });
+    const cil = conBordes(new THREE.CylinderGeometry(0.18, 0.18, 0.36, 28), c, { k: 0.6 }); cil.children.forEach(m => { m.rotation.x = Math.PI / 2; });
+    const pri = conBordes(new THREE.CylinderGeometry(0.24, 0.24, 0.36, 3), c, { k: 0.6 }); pri.children.forEach(m => { m.rotation.x = Math.PI / 2; });
+    g.add(cubo, cil, pri);
+    const flash = brillo(OK, 1.2, 0); g.add(flash);
+    const lejos = z => V(0, 0.2, 1.6 + z);
+    const kfCubo = [[0, V(-0.75, 0.6, 1.8)], [1.0, V(-0.75, 0, -0.05)], [6.2, V(-0.75, 0, -0.05)], [7.0, V(-0.75, 0.8, 1.8)]];
+    const kfPri = [[0, V(0.4, 0.9, 2)], [1.0, V(0.3, 0.8, 1.6)], [2.2, V(0, 0, 0.12)], [2.6, V(0.1, 0.4, 0.9)], [3.6, V(0.75, 0, -0.05)], [6.2, V(0.75, 0, -0.05)], [7.0, V(0.8, 0.8, 1.8)]];
+    const kfCil = [[0, V(-0.2, -0.9, 2)], [3.6, V(-0.2, -0.8, 1.8)], [4.8, V(0, 0, -0.05)], [6.2, V(0, 0, -0.05)], [7.0, V(0, -0.8, 1.8)]];
+    return { g, up(t) {
+      const T = fract(t / 7) * 7;
+      claves(T, kfCubo, cubo.position); claves(T, kfPri, pri.position); claves(T, kfCil, cil.position);
+      [cubo, cil, pri].forEach((m, i) => { m.rotation.z = T > 5 ? 0 : Math.sin(t * 2 + i) * 0.2; });
+      const error = T > 2.1 && T < 2.7, ok = (T > 1.0 && T < 1.4) || (T > 3.6 && T < 4.0) || (T > 4.8 && T < 5.2);
+      flash.material.color.copy(error ? MAL : OK); flash.material.opacity = error || ok ? 0.9 : flash.material.opacity * 0.9;
+      flash.position.set(error ? 0 : T < 2 ? -0.75 : T < 4.4 ? 0.75 : 0, 0, 0.1);
+      pri.children[0].material.emissive.copy(error ? MAL : c);
+      g.rotation.y = 0.35 + Math.sin(t * 0.3) * 0.2;
+    } };
+  },
+
+  // IA con RAG: busca en una nube de apuntes y la red responde
+  red(c) {
+    const g = new THREE.Group();
+    const capas = [[-0.55, 4], [0.35, 6], [1.25, 3]].map(([x, n]) => Array.from({ length: n }, (_, i) => V(x, (i - (n - 1) / 2) * 0.42, 0)));
+    const segs = [];
+    for (let l = 0; l < 2; l++) capas[l].forEach(a => capas[l + 1].forEach(b => segs.push(a, b)));
+    g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(segs), mLinea(c, 0.18)));
+    const esf = new THREE.SphereGeometry(0.1, 18, 14);
+    const nodos = capas.map((cap, l) => cap.map(p => { const m = new THREE.Mesh(esf, mSolido(l === 2 ? BLANCO : c, 0.4)); m.position.copy(p); g.add(m); return m; }));
+    const nube = []; const col = [];
+    for (let i = 0; i < 90; i++) { const r = 0.55 * Math.cbrt(Math.random()), a = Math.random() * TAU, b = Math.acos(2 * Math.random() - 1); nube.push(-1.55 + r * Math.sin(b) * Math.cos(a), r * Math.cos(b), r * Math.sin(b) * Math.sin(a)); col.push(c.r, c.g, c.b); }
+    const gp = new THREE.BufferGeometry(); gp.setAttribute('position', new THREE.Float32BufferAttribute(nube, 3)); gp.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.add(new THREE.Points(gp, new THREE.PointsMaterial({ size: 0.09, map: BRILLO, vertexColors: true, ...ADD })));
+    const busc = [0, 1, 2].map(i => { const s = brillo(BLANCO, 0.4, 1); g.add(s); return { s, de: V(nube[i * 27], nube[i * 27 + 1], nube[i * 27 + 2]), a: capas[0][i] }; });
+    return { g, up(t) {
+      const T = fract(t / 3.6);
+      busc.forEach(b => { b.s.position.copy(b.de).lerp(b.a, entradaSalida(tramo(T, 0, 0.3))); b.s.material.opacity = T < 0.32 ? 1 : 0; });
+      nodos.forEach((cap, l) => { const on = Math.max(0, 1 - Math.abs(T - (0.3 + l * 0.2)) * 7); cap.forEach((m, i) => { const k = on * (0.6 + 0.4 * Math.sin(i * 2.3 + l)); m.material.emissiveIntensity = 0.35 + k * 1.3; m.scale.setScalar(1 + k * 0.4); }); });
+      g.rotation.y = Math.sin(t * 0.3) * 0.45;
+    } };
+  },
+
+  // Pandas: un gráfico de barras 3D que se recalcula con cada dato que entra
+  barras(c) {
+    const g = new THREE.Group(); g.rotation.set(-0.45, 0.65, 0);
+    const n = 4, geo = new THREE.BoxGeometry(0.26, 1, 0.26), mat = mSolido(BLANCO, 0.5);
+    const inst = new THREE.InstancedMesh(geo, mat, n * n); g.add(inst);
+    const dummy = new THREE.Object3D(), colTmp = new THREE.Color();
+    const base = new THREE.Mesh(geoPanel(1.9, 1.9, 0.03, 0.1), mVidrio(c, 0.1)); base.rotation.x = -Math.PI / 2; base.position.y = -0.9; g.add(base);
+    g.add(linea([V(-0.95, -0.88, 0.95), V(0.95, -0.88, 0.95)], c, 0.6), linea([V(-0.95, -0.88, 0.95), V(-0.95, -0.88, -0.95)], c, 0.6), linea([V(-0.95, -0.88, -0.95), V(-0.95, 1.1, -0.95)], c, 0.4));
+    const gotas = [0, 1, 2, 3].map(() => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.08), mPlano(c)); g.add(m); return m; });
+    return { g, up(t) {
+      for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) {
+        const h = 0.3 + (Math.sin(i * 1.3 + k * 0.7 + t * 0.9) * 0.5 + 0.5) * 1.3 + (i === 3 ? 0.25 : 0);
+        dummy.position.set((i - 1.5) * 0.42, -0.88 + h / 2, (k - 1.5) * 0.42); dummy.scale.set(1, h, 1); dummy.updateMatrix();
+        inst.setMatrixAt(i * n + k, dummy.matrix);
+        colTmp.copy(BLANCO).lerp(c, clamp(h / 1.7, 0, 1)); inst.setColorAt(i * n + k, colTmp);
+      }
+      inst.instanceMatrix.needsUpdate = true; if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+      gotas.forEach((m, j) => { const u = fract(t * 0.5 + j / 4); m.position.set(((j * 3) % 4 - 1.5) * 0.42, lerp(1.9, 0.6, u), ((j * 7) % 4 - 1.5) * 0.42); m.scale.setScalar(u > 0.9 ? 1 - tramo(u, 0.9, 1) : 1); });
+    } };
+  },
+
+  // Grafos: el camino más corto se ilumina entre dos nodos
+  grafo(c) {
+    const g = new THREE.Group();
+    const P = [V(-1.4, 0.1, 0), V(-0.8, 0.8, 0.3), V(-0.7, -0.6, -0.2), V(0, 0.2, 0.4), V(0.1, -0.9, 0), V(0.2, 1.0, -0.3), V(0.8, -0.2, -0.2), V(1.0, 0.75, 0.3), V(1.45, -0.55, 0.2)];
+    const E = [[0, 1], [0, 2], [1, 3], [1, 5], [2, 3], [2, 4], [3, 6], [3, 5], [4, 6], [5, 7], [6, 7], [6, 8], [4, 8], [7, 8]];
+    const aristas = E.map(([a, b]) => { const l = tubo(new THREE.LineCurve3(P[a], P[b]), 0.015, c, 0.3); g.add(l); return { l, a, b }; });
+    const esf = new THREE.SphereGeometry(0.13, 20, 14);
+    const nodos = P.map(p => { const m = new THREE.Mesh(esf, mSolido(BLANCO, 0.25)); m.position.copy(p); g.add(m); return m; });
+    const camino = [[0, 2, 3, 6, 8], [1, 3, 6, 7]];
+    const cometa = brillo(c, 0.8, 1); g.add(cometa);
+    // distancia en saltos desde el inicio, para la ola de exploración
+    const saltos = ini => { const d = P.map(() => 99); d[ini] = 0; const q = [ini]; while (q.length) { const u = q.shift(); E.forEach(([a, b]) => { const v = a === u ? b : b === u ? a : -1; if (v >= 0 && d[v] > d[u] + 1) { d[v] = d[u] + 1; q.push(v); } }); } return d; };
+    const dist = camino.map(cm => saltos(cm[0]));
+    const tmp = V();
+    return { g, up(t) {
+      const ciclo = Math.floor(t / 5) % 2, T = fract(t / 5) * 5, cm = camino[ciclo], d = dist[ciclo];
+      nodos.forEach((m, i) => { const ola = Math.max(0, 1 - Math.abs(T * 1.6 - d[i]) * 1.4); const en = cm.includes(i) && T > 2.4; m.material.emissive.copy(en ? c : BLANCO); m.material.emissiveIntensity = en ? 1 : 0.25 + ola * 0.8; m.scale.setScalar(i === cm[0] || i === cm[cm.length - 1] ? 1.35 : 1); });
+      aristas.forEach(o => { let en = false; for (let k = 0; k < cm.length - 1; k++) if ((cm[k] === o.a && cm[k + 1] === o.b) || (cm[k] === o.b && cm[k + 1] === o.a)) en = true; o.l.material.opacity = en && T > 2.4 ? 1 : 0.28; });
+      const u = tramo(T, 2.4, 4.6) * (cm.length - 1), s = Math.min(cm.length - 2, Math.floor(u)), f = u - s;
+      tmp.copy(P[cm[s]]).lerp(P[cm[s + 1]], f); cometa.position.copy(tmp); cometa.material.opacity = T > 2.4 && T < 4.8 ? 1 : 0;
+      g.rotation.y = Math.sin(t * 0.3) * 0.5;
+    } };
+  },
+
+  // Bot de Discord: un bot central que responde comandos con mensajes que suben
+  chat(c) {
+    const g = new THREE.Group();
+    const bot = conBordes(geoPanel(0.9, 0.9, 0.7, 0.2), c, { k: 0.45 }); g.add(bot);
+    const barra = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.05), mPlano(BLANCO)); barra.rotation.z = -0.4; barra.position.z = 0.38; bot.add(barra);
+    const orbita = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.014, 8, 80), mLuz(c, 0.5)); orbita.rotation.x = Math.PI / 2 - 0.3; g.add(orbita);
+    const burbujas = [0, 1, 2, 3, 4, 5].map(i => { const b = new THREE.Group(); b.add(panel(0.66, 0.28, 0.04, 0.12, i % 2 ? BLANCO : c, { k: i % 2 ? 0.08 : 0.55, bo: 0.8 })); const l1 = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.04, 0.02), mPlano(i % 2 ? c : BLANCO, 0.8)); l1.position.set(-0.08, 0.04, 0.03); const l2 = l1.clone(); l2.scale.x = 0.6; l2.position.set(-0.14, -0.05, 0.03); b.add(l1, l2); g.add(b); return b; });
+    return { g, up(t) {
+      bot.rotation.y = Math.sin(t * 0.8) * 0.4; bot.position.y = Math.sin(t * 1.4) * 0.05;
+      burbujas.forEach((b, i) => { const u = fract(t * 0.17 + i / 6), a = i * 2.1 + u * 1.2; b.position.set(Math.cos(a) * 1.25, -1.1 + u * 2.4, Math.sin(a) * 1.25 * 0.6); b.lookAt(b.position.x * 2, b.position.y, b.position.z * 2 + 3); b.scale.setScalar(u < 0.1 ? rebote(u / 0.1) : 1 - tramo(u, 0.8, 1)); });
+      orbita.rotation.z = t * 0.3;
+    } };
+  },
+
+  // Java moderno: un stream de records que se filtran, se transforman y se juntan en una lista
+  streams(c) {
+    const g = new THREE.Group(); g.rotation.set(0.1, -0.4, 0);
+    const puertas = [0.7, -0.1].map(y => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.032, 10, 48), mLuz(c, 0.95)); r.rotation.x = Math.PI / 2; r.position.y = y; g.add(r); const h = brillo(c, 1.4, 0.25); h.position.y = y; g.add(h); return r; });
+    const lista = panel(2.2, 0.3, 0.05, 0.1, BLANCO, { k: 0.04, bo: 0.5 }); lista.position.y = -1.3; g.add(lista);
+    const recs = [0, 1, 2, 3, 4, 5, 6].map(i => {
+      const r = new THREE.Group(); const campos = new THREE.Group();
+      [c, BLANCO, new THREE.Color('#7cc8ff')].forEach((col, k) => { const b = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.17, 0.17), mSolido(col, 0.55)); b.position.x = (k - 1) * 0.17; campos.add(b); });
+      const cap = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.34, 6, 14), mSolido(c, 0.9)); cap.rotation.z = Math.PI / 2;
+      r.add(campos, cap); g.add(r); return { r, campos, cap, cae: i % 3 === 2 };
+    });
+    return { g, up(t) {
+      let n = 0;
+      recs.forEach((o, i) => {
+        const u = fract(t * 0.13 + i / 7), y = lerp(1.6, -1.25, u), mapeado = y < -0.1, fuera = o.cae && y < 0.7;
+        o.campos.visible = !mapeado; o.cap.visible = mapeado;
+        let x = 0, z = 0; if (fuera) { const d = 0.7 - y; x = d * d * 2.2; z = d * 0.6; }
+        const slot = (i % 5) - 2;
+        if (u > 0.85 && !o.cae) x = lerp(0, slot * 0.42, tramo(u, 0.85, 0.95));
+        o.r.position.set(x, Math.max(y, -1.25), z);
+        o.r.scale.setScalar(fuera ? Math.max(0.01, 1 - (0.7 - y) * 1.2) : u < 0.05 ? tramo(u, 0, 0.05) : u > 0.97 ? 1 - tramo(u, 0.97, 1) : 1);
+        o.r.rotation.y = mapeado ? 0 : t;
+        if (u > 0.9 && !o.cae) n++;
+      });
+      puertas.forEach((p, i) => { p.scale.setScalar(1 + Math.sin(t * 3 + i) * 0.05); });
+      lista.children[0].material.emissiveIntensity = 0.04 + n * 0.2;
+    } };
+  },
+
+  // Patrones de diseño: piezas intercambiables (Strategy) y observadores que reaccionan (Observer)
+  piezas(c) {
+    const g = new THREE.Group();
+    const hub = conBordes(new THREE.OctahedronGeometry(0.42), c, { k: 0.7 }); g.add(hub);
+    const dirs = [0, 1, 2].map(k => { const a = (k / 3) * TAU + Math.PI / 2; return V(Math.cos(a), Math.sin(a), 0); });
+    dirs.forEach(d => { const brazo = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8, 10), mSolido(BLANCO, 0.2)); brazo.position.copy(d).multiplyScalar(0.72); brazo.quaternion.setFromUnitVectors(V(0, 1, 0), d); g.add(brazo); const enchufe = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.028, 8, 30), mLuz(c, 0.9)); enchufe.position.copy(d).multiplyScalar(1.18); enchufe.quaternion.setFromUnitVectors(V(0, 0, 1), d); g.add(enchufe); });
+    const formas = [new THREE.BoxGeometry(0.42, 0.42, 0.42), new THREE.ConeGeometry(0.28, 0.5, 24), new THREE.TorusKnotGeometry(0.18, 0.06, 80, 12), new THREE.SphereGeometry(0.26, 24, 18), new THREE.DodecahedronGeometry(0.28)];
+    const piezas = dirs.map((d, k) => { const m = new THREE.Mesh(formas[k], mSolido(k === 1 ? BLANCO : c, 0.6)); g.add(m); return { m, d, forma: k }; });
+    const obs = [0, 1, 2, 3].map(() => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), mSolido(BLANCO, 0.3)); g.add(m); return m; });
+    let ultimo = -1;
+    return { g, up(t) {
+      const ciclo = Math.floor(t / 3), f = fract(t / 3), k = ciclo % 3;
+      if (ciclo !== ultimo) { ultimo = ciclo; const p = piezas[k]; p.forma = (p.forma + 3) % 5; p.m.geometry = formas[p.forma]; }
+      piezas.forEach((p, i) => {
+        let r = 1.62; if (i === k) r = f < 0.3 ? lerp(3.4, 1.62, rebote(f / 0.3)) : 1.62;
+        p.m.position.copy(p.d).multiplyScalar(r); p.m.rotation.set(t * 0.8 + i, t * 1.1, 0);
+        p.m.material.emissiveIntensity = i === k && f > 0.25 && f < 0.45 ? 1.6 : 0.6;
+      });
+      const avisa = f > 0.3 && f < 0.55 ? 1 : 0;
+      obs.forEach((m, i) => { const a = t * 0.6 + (i / 4) * TAU; m.position.set(Math.cos(a) * 2.1, Math.sin(a) * 0.55, Math.sin(a) * 2.1 * 0.5); m.material.emissive.copy(avisa ? c : BLANCO); m.material.emissiveIntensity = 0.3 + avisa * 1.2; m.scale.setScalar(1 + avisa * 0.5); });
+      hub.rotation.set(t * 0.5, t * 0.8, 0);
+      g.rotation.y = Math.sin(t * 0.25) * 0.4;
+    } };
+  },
+
+  // JUnit: una batería de pruebas que falla, se corrige y termina en verde
+  checks(c) {
+    const g = new THREE.Group(); g.rotation.set(-0.2, 0.3, 0);
+    const tiles = [];
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(geoPanel(0.46, 0.46, 0.08, 0.08), mSolido(BLANCO, 0.08)); m.position.set((k - 1.5) * 0.56, 0.62 - r * 0.56, 0); g.add(m); tiles.push(m); }
+    const barra = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.06), mPlano(OK)); barra.position.y = -1.05; g.add(barra);
+    const fondoBarra = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.05), mPlano(BLANCO, 0.15)); fondoBarra.position.y = -1.05; g.add(fondoBarra);
+    const grande = marcaCheck(OK, 1.8); grande.position.z = 0.6; g.add(grande);
+    const fallan = [3, 9];
+    return { g, up(t) {
+      const T = fract(t / 9) * 9, segunda = T > 4.2, t0 = segunda ? 4.4 : 0.3;
+      tiles.forEach((m, i) => {
+        const lleg = t0 + i * 0.25, corrida = T > lleg;
+        let col = BLANCO, k = 0.08;
+        if (corrida) { const falla = !segunda && fallan.includes(i); col = falla ? MAL : OK; k = 0.8; }
+        if (T > lleg - 0.25 && T < lleg) { col = c; k = 1.2; }
+        m.material.emissive.copy(col); m.material.emissiveIntensity = k;
+      });
+      const prog = segunda ? tramo(T, 4.4, 4.4 + 12 * 0.25) : tramo(T, 0.3, 0.3 + 12 * 0.25);
+      barra.scale.x = Math.max(0.001, prog); barra.position.x = -1.1 + 1.1 * prog; barra.material.color.copy(!segunda && prog >= 1 ? MAL : OK);
+      grande.scale.setScalar(T > 7.5 ? rebote(tramo(T, 7.5, 8.0)) * (1 - tramo(T, 8.7, 9)) : 0.001);
+    } };
+  },
+
+  // Aula de integración: cinco piezas de cinco áreas que orbitan y se ensamblan en un sistema
+  integracion(c) {
+    const g = new THREE.Group();
+    const cols = ['#7cc8ff', '#ffd166', '#ff8fd8', '#ffa36b', '#b9a5ff'].map(h => new THREE.Color(h));
+    const geos = [new THREE.TetrahedronGeometry(0.38), new THREE.IcosahedronGeometry(0.34), new THREE.OctahedronGeometry(0.37), new THREE.DodecahedronGeometry(0.34), new THREE.CylinderGeometry(0.3, 0.3, 0.36, 6)];
+    const piezas = geos.map((geo, i) => {
+      const inc = (i / 5) * Math.PI - 0.6, p = conBordes(geo, cols[i], { k: 0.65 }); p.add(brillo(cols[i], 1.2, 0.45)); g.add(p);
+      const orb = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.007, 6, 140), mLuz(cols[i], 0.35)); orb.rotation.x = Math.PI / 2 - inc; g.add(orb);
+      return { p, orb, inc, fase: (i / 5) * TAU };
+    });
+    const nucleo = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 1), mSolido(c, 0.9)); const halo = brillo(c, 2.6, 0.3); nucleo.add(halo); g.add(nucleo);
+    const anilloN = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.02, 8, 70), mLuz(c, 0)); g.add(anilloN);
+    const rayos = piezas.map(() => { const l = linea([V(), V()], c, 0); g.add(l); return l; });
+    const tmp = V(), dest = V();
+    return { g, up(t) {
+      const T = fract(t / 8) * 8, junta = entradaSalida(tramo(T, 3.2, 4.6)) * (1 - entradaSalida(tramo(T, 6.6, 7.8)));
+      piezas.forEach((o, i) => {
+        const a = t * 0.7 + o.fase; tmp.set(Math.cos(a) * 1.55, Math.sin(a) * Math.sin(o.inc) * 1.55, Math.sin(a) * Math.cos(o.inc) * 1.55);
+        const b = (i / 5) * TAU + Math.PI / 2 + t * 0.4 * junta; dest.set(Math.cos(b) * 1.05, Math.sin(b) * 1.05, 0);
+        o.p.position.copy(tmp).lerp(dest, junta); o.p.rotation.set(t, t * 0.7, 0);
+        o.orb.material.opacity = 0.32 * (1 - junta);
+        fijarLinea(rayos[i], V(0, 0, 0), o.p.position); rayos[i].material.opacity = junta * 0.85;
+      });
+      nucleo.scale.setScalar(0.5 + 0.7 * junta); nucleo.rotation.set(t * 0.4, t * 0.6, 0);
+      anilloN.material.opacity = junta * 0.8; anilloN.rotation.z = t * 0.5; anilloN.scale.setScalar(1 + junta * 0.4);
+      const estallido = tramo(T, 4.4, 5.4); halo.material.opacity = 0.3 + junta * (0.3 + 0.6 * Math.sin(estallido * Math.PI)); halo.scale.setScalar(2.2 + Math.sin(estallido * Math.PI) * 1.8);
+      g.rotation.y = Math.sin(t * 0.2) * 0.3;
+    } };
+  },
+};
+
+// ============ escena: la torre de talleres ============
+const DATOS = JSON.parse(document.getElementById('datos').textContent);
+const lienzo = document.getElementById('escena');
+const capaEtq = document.getElementById('etiquetas');
+const reducir = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const normAng = x => x - TAU * Math.round(x / TAU);
+const dinero = n => { const c = Math.round(n * 100); return '$' + (c % 100 === 0 ? String(c / 100) : (c / 100).toFixed(2).replace('.', ',')); };
+
+(function iniciar() {
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, powerPreference: 'high-performance' });
+  } catch (err) { document.body.classList.add('sin3d'); return; }
+  document.body.classList.remove('sin3d'); document.body.classList.add('con3d');
+  renderer.setClearColor(0x06080f, 1);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  let dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+  renderer.setPixelRatio(dpr);
+  lienzo.addEventListener('webglcontextlost', e => { e.preventDefault(); document.body.classList.add('sin3d'); });
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x06080f, 0.011);
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 400);
+  scene.add(new THREE.AmbientLight(0x8e9ac0, 1.2));
+  const sol = new THREE.DirectionalLight(0xffffff, 2.4); sol.position.set(5, 12, 9); scene.add(sol);
+  const contra = new THREE.DirectionalLight(0x8b7cff, 1.1); contra.position.set(-8, -4, -6); scene.add(contra);
+  const foco = new THREE.PointLight(0xffffff, 0, 18, 2); scene.add(foco);
+
+  const torre = new THREE.Group(); scene.add(torre);
+  const NIV = { 1: { y: -6.2, r: 3.4 }, 2: { y: -0.8, r: 6.6 }, 3: { y: 4.8, r: 7.4 } };
+  const CORONA = V(0, 9.6, 0);
+  const tmp = V();
+
+  // ---------- nodos ----------
+  const FORMAS = {};
+  function geoForma(f, s) {
+    const k = f + s; if (FORMAS[k]) return FORMAS[k];
+    let geo;
+    if (f === 'tetra') geo = new THREE.TetrahedronGeometry(s * 1.2);
+    else if (f === 'ico') geo = new THREE.IcosahedronGeometry(s, 0);
+    else if (f === 'octa') geo = new THREE.OctahedronGeometry(s * 1.12);
+    else if (f === 'dodeca') geo = new THREE.DodecahedronGeometry(s);
+    else if (f === 'cubo') geo = new THREE.BoxGeometry(s * 1.25, s * 1.25, s * 1.25);
+    else if (f === 'hex') geo = new THREE.CylinderGeometry(s, s, s * 1.1, 6);
+    else geo = new THREE.IcosahedronGeometry(s, 1);
+    return (FORMAS[k] = new THREE.EdgesGeometry(geo));
+  }
+  const ESF_TOQUE = new THREE.SphereGeometry(1, 10, 8), MAT_TOQUE = new THREE.MeshBasicMaterial({ visible: false });
+  const ESF_NUCLEO = new THREE.SphereGeometry(1, 18, 14);
+  const nodos = [], porId = {};
+  function ponerEtiqueta(n, html) { if (n.etqTxt !== html) { n.etqTxt = html; n.etq.innerHTML = '<i></i>' + html; n.etqAncho = 0; } }
+  function crearNodo(t, pos) {
+    const A = DATOS.areas[t.area], col = new THREE.Color(A.color), grande = t.id === 'integracion', s = grande ? 0.62 : 0.36;
+    const cont = new THREE.Group(); cont.position.copy(pos); torre.add(cont);
+    const vis = new THREE.Group(); cont.add(vis);
+    const alambre = new THREE.LineSegments(geoForma(A.forma, s), mLinea(col, 0.95));
+    const nucleo = new THREE.Mesh(ESF_NUCLEO, new THREE.MeshBasicMaterial({ color: col, transparent: true })); nucleo.scale.setScalar(grande ? 0.24 : 0.12);
+    const halo = brillo(col, grande ? 3.6 : 1.8, 0.5);
+    vis.add(alambre, nucleo, halo);
+    const anillos = [];
+    if (grande) [[1.15, 0.022, 0.75], [1.5, 0.012, 0.4]].forEach(([r, g, o], i) => { const a = new THREE.Mesh(new THREE.TorusGeometry(r, g, 8, 90), mLuz(col, o)); a.rotation.x = Math.PI / 2 + i * 0.35; vis.add(a); anillos.push(a); });
+    const toque = new THREE.Mesh(ESF_TOQUE, MAT_TOQUE); toque.scale.setScalar(grande ? 1.5 : 0.95); toque.userData.id = t.id; cont.add(toque);
+    const etq = document.createElement('span'); etq.className = 'etq'; etq.style.setProperty('--c', A.color); capaEtq.appendChild(etq);
+    const ang = Math.random() * TAU, rr = 20 + Math.random() * 12;
+    const n = { t, col, cont, vis, alambre, nucleo, halo, anillos, toque, etq, base: pos.clone(), fase: Math.random() * TAU,
+      luz: 0, luzT: 1, esc: 1, escT: 1, oculto: 0, etqTxt: '', etqOp: -1, etqAncho: 0,
+      de: V(Math.cos(ang) * rr, (Math.random() - 0.3) * 22, Math.sin(ang) * rr), retraso: 0.2 + (t.nivel - 1) * 0.35 + Math.random() * 0.5 };
+    ponerEtiqueta(n, t.corto);
+    nodos.push(n); porId[t.id] = n;
+  }
+  const porNivel = { 1: [], 2: [], 3: [] };
+  DATOS.talleres.forEach(t => { if (t.id !== 'integracion') porNivel[t.nivel].push(t); });
+  const giroNivel = { 1: Math.PI / 2, 2: Math.PI / 2 - 0.35, 3: Math.PI / 2 + 0.2 };
+  [1, 2, 3].forEach(L => { const lista = porNivel[L]; lista.forEach((t, i) => { const a = giroNivel[L] + (i / lista.length) * TAU; crearNodo(t, V(Math.cos(a) * NIV[L].r, NIV[L].y, Math.sin(a) * NIV[L].r)); }); });
+  crearNodo(DATOS.talleres.find(t => t.id === 'integracion'), CORONA.clone());
+
+  // ---------- anillos de nivel, eje y estrellas ----------
+  const GRIS = 0x8fa3d6;
+  [1, 2, 3].forEach(L => {
+    const { y, r } = NIV[L], g = new THREE.Group(); g.position.y = y - 0.05;
+    const pts = []; for (let i = 0; i <= 128; i++) { const a = (i / 128) * TAU; pts.push(V(Math.cos(a) * r, 0, Math.sin(a) * r)); }
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mLinea(GRIS, 0.34)));
+    const tics = []; for (let i = 0; i < 72; i++) { const a = (i / 72) * TAU, l = i % 6 === 0 ? 0.5 : 0.2, r0 = r + 0.14; tics.push(V(Math.cos(a) * r0, 0, Math.sin(a) * r0), V(Math.cos(a) * (r0 + l), 0, Math.sin(a) * (r0 + l))); }
+    g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(tics), mLinea(GRIS, 0.22)));
+    const disco = new THREE.Mesh(new THREE.RingGeometry(r * 0.15, r, 96, 1), new THREE.MeshBasicMaterial({ color: 0x5b6ea8, ...ADD, opacity: 0.045, side: THREE.DoubleSide })); disco.rotation.x = -Math.PI / 2; g.add(disco);
+    torre.add(g);
+  });
+  torre.add(linea([V(0, NIV[1].y - 1.4, 0), V(0, CORONA.y - 0.7, 0)], GRIS, 0.2));
+  const NS = 36, posS = new Float32Array(NS * 3), faseS = Array.from({ length: NS }, () => Math.random());
+  const geoS = new THREE.BufferGeometry(); geoS.setAttribute('position', new THREE.BufferAttribute(posS, 3));
+  const subida = new THREE.Points(geoS, new THREE.PointsMaterial({ size: 0.3, map: BRILLO, color: 0xfff3c4, ...ADD, opacity: 0 })); subida.frustumCulled = false; torre.add(subida);
+
+  const NE = 1100, posE = new Float32Array(NE * 3), colE = new Float32Array(NE * 3);
+  for (let i = 0; i < NE; i++) {
+    const r = 55 + Math.random() * 80, a = Math.random() * TAU, b = Math.acos(2 * Math.random() - 1), k = 0.3 + Math.random() * 0.55, azul = Math.random();
+    posE[i * 3] = r * Math.sin(b) * Math.cos(a); posE[i * 3 + 1] = r * Math.cos(b) * 0.75; posE[i * 3 + 2] = r * Math.sin(b) * Math.sin(a);
+    colE[i * 3] = k * (0.75 + 0.25 * (1 - azul)); colE[i * 3 + 1] = k * 0.85; colE[i * 3 + 2] = k;
+  }
+  const geoE = new THREE.BufferGeometry(); geoE.setAttribute('position', new THREE.BufferAttribute(posE, 3)); geoE.setAttribute('color', new THREE.BufferAttribute(colE, 3));
+  const estrellas = new THREE.Points(geoE, new THREE.PointsMaterial({ size: 2.2, sizeAttenuation: false, map: BRILLO, vertexColors: true, ...ADD, opacity: 0, fog: false }));
+  scene.add(estrellas);
+
+  // ---------- conexiones y pulsos ----------
+  const pares = [], vistos = new Set();
+  DATOS.talleres.forEach(t => t.conecta.forEach(o => { const k = [t.id, o].sort().join('|'); if (porId[o] && !vistos.has(k)) { vistos.add(k); pares.push([t.id, o]); } }));
+  const aristas = pares.map(([a, b]) => {
+    const A = porId[a].base, B = porId[b].base, m = A.clone().add(B).multiplyScalar(0.5), rad = V(m.x, 0, m.z), L = rad.length();
+    if (L > 0.01) rad.multiplyScalar(1.7 / L);
+    return { a, b, curva: new THREE.QuadraticBezierCurve3(A.clone(), m.clone().add(rad).add(V(0, 0.5, 0)), B.clone()), ca: porId[a].col, cb: porId[b].col };
+  });
+  const SEG = 24;
+  function geoAristas(lista) {
+    const pos = new Float32Array(Math.max(1, lista.length) * SEG * 6), col = new Float32Array(pos.length);
+    let o = 0; const p = V(), c0 = new THREE.Color();
+    lista.forEach(e => { for (let i = 0; i < SEG; i++) for (const u of [i / SEG, (i + 1) / SEG]) { e.curva.getPoint(u, p); c0.copy(e.ca).lerp(e.cb, u); pos[o] = p.x; pos[o + 1] = p.y; pos[o + 2] = p.z; col[o] = c0.r; col[o + 1] = c0.g; col[o + 2] = c0.b; o += 3; } });
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setDrawRange(0, lista.length * SEG * 2); return geo;
+  }
+  const matAristas = new THREE.LineBasicMaterial({ vertexColors: true, ...ADD, opacity: 0 });
+  torre.add(new THREE.LineSegments(geoAristas(aristas), matAristas));
+  const matAlto = new THREE.LineBasicMaterial({ vertexColors: true, ...ADD, opacity: 0 });
+  let lineasAlto = null;
+  function resaltarAristas(lista) {
+    if (lineasAlto) { torre.remove(lineasAlto); lineasAlto.geometry.dispose(); lineasAlto = null; }
+    if (lista.length) { lineasAlto = new THREE.LineSegments(geoAristas(lista), matAlto); torre.add(lineasAlto); }
+  }
+  const NP = aristas.length, posP = new Float32Array(NP * 3), colP = new Float32Array(NP * 3);
+  const geoP = new THREE.BufferGeometry(); geoP.setAttribute('position', new THREE.BufferAttribute(posP, 3)); geoP.setAttribute('color', new THREE.BufferAttribute(colP, 3));
+  const matP = new THREE.PointsMaterial({ size: 0.36, map: BRILLO, vertexColors: true, ...ADD, opacity: 0 });
+  const pulsos = new THREE.Points(geoP, matP); pulsos.frustumCulled = false; torre.add(pulsos);
+  const faseP = aristas.map(() => Math.random()), velP = aristas.map(() => 0.1 + Math.random() * 0.16);
+  let luzP = aristas.map(() => 1), luzPT = aristas.map(() => 1);
+
+  // ---------- etiquetas de nivel ----------
+  const etqNivel = [1, 2, 3].map(L => { const e = document.createElement('span'); e.className = 'etq etq-nivel'; e.innerHTML = `<b>NIVEL ${L}</b>${dinero(DATOS.niveles[L].precio)} el aula`; e.style.setProperty('--c', '#f7f0e3'); capaEtq.appendChild(e); return { e, L, op: -1 }; });
+
+  // ---------- cámara ----------
+  const PUNTOS = {
+    hero: { look: [0, 1.5, 0], fw: 17, fh: 19.5, elev: 0.16, zona: 'abajo' },
+    como: { look: [0, -5.4, 0], fw: 10, fh: 8, elev: 0.3 },
+    n1: { look: [0, -6.0, 0], fw: 9.5, fh: 7.5, elev: 0.32 },
+    n2: { look: [0, -0.8, 0], fw: 15.5, fh: 9, elev: 0.28 },
+    n3: { look: [0, 5.2, 0], fw: 17, fh: 10.5, elev: 0.22 },
+    rutas: { look: [0, 1.6, 0], fw: 17, fh: 21, elev: 0.2 },
+    precio: { look: [0, 2.2, 0], fw: 26, fh: 32, elev: 0.08 },
+    tutorias: { look: [0, 2.2, 0], fw: 26, fh: 32, elev: 0.08 },
+    final: { look: [0, 9.6, 0], fw: 7.5, fh: 7.5, elev: 0.16, zona: 'arriba' },
+  };
+  let W = 1, H = 1;
+  const cam = { look: V(0, 1.4, 0), dist: 90, elev: 0.5, offX: 0, offY: 0 };
+  const obj = { look: V(0, 1.4, 0), dist: 40, elev: 0.16, offX: 0, offY: 0 };
+  const hojaEl = document.getElementById('hoja');
+  function zonaLibre(pista) {
+    let x0 = 0, y0 = 64, x1 = W, y1 = H;
+    if (W < 980 && pista === 'abajo') y0 = H * 0.585;
+    if (W < 980 && pista === 'arriba') y1 = H * 0.5;
+    if (modo !== 'vista' && hojaEl && !hojaEl.hidden) { if (W >= 980) x1 = W - hojaEl.offsetWidth; else y1 = H - hojaEl.offsetHeight; }
+    else if (W >= 980) x0 = Math.min(W * 0.44, 640);
+    if (y1 - y0 < 160) y1 = y0 + 160;
+    return { x0, y0, x1, y1 };
+  }
+  function apuntar(p, fw, fh, elev, pista) {
+    const z = zonaLibre(pista), tv = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), asp = W / H;
+    const w = asp < 0.8 && modo === 'vista' ? fw * 0.72 : fw;
+    const fracW = (z.x1 - z.x0) / W, fracH = (z.y1 - z.y0) / H;
+    obj.look.copy(p); obj.elev = elev;
+    obj.dist = Math.max((fh / 2) / (tv * fracH), (w / 2) / (tv * asp * fracW));
+    obj.offX = W / 2 - (z.x0 + z.x1) / 2; obj.offY = H / 2 - (z.y0 + z.y1) / 2;
+  }
+  function apuntarSeccion() { const P = PUNTOS[seccion] || PUNTOS.hero; apuntar(V(...P.look), P.fw, P.fh, P.elev, P.zona); }
+  function puntoTaller(id) { const n = porId[id]; return id === 'integracion' ? V(0, CORONA.y + 0.3, 2.3) : V(0, n.base.y + 0.3, Math.hypot(n.base.x, n.base.z) + 2.5); }
+  function reapuntar() {
+    if (modo === 'taller' && sel) { const f = W >= 980 ? 4.8 : 3.5; apuntar(puntoTaller(sel), f, f, 0.1); }
+    else if (modo === 'ruta') apuntar(V(0, 1.6, 0), 17, 21, 0.2);
+    else apuntarSeccion();
+  }
+  function moverCamara(dt) {
+    const k = reducir ? 1 : 1 - Math.exp(-dt * 2.6);
+    cam.look.lerp(obj.look, k); cam.dist = lerp(cam.dist, obj.dist, k); cam.elev = lerp(cam.elev, obj.elev, k);
+    cam.offX = lerp(cam.offX, obj.offX, k); cam.offY = lerp(cam.offY, obj.offY, k);
+    const vaiven = reducir ? 0 : Math.sin(tiempo * 0.13) * 0.05, ce = Math.cos(cam.elev);
+    camera.position.set(cam.look.x + Math.sin(vaiven) * cam.dist * ce, cam.look.y + Math.sin(cam.elev) * cam.dist, cam.look.z + Math.cos(vaiven) * cam.dist * ce);
+    camera.lookAt(cam.look);
+    if (Math.abs(cam.offX) > 0.5 || Math.abs(cam.offY) > 0.5) camera.setViewOffset(W, H, cam.offX, cam.offY, W, H); else camera.clearViewOffset();
+  }
+
+  // ---------- modos ----------
+  let modo = 'vista', sel = null, rutaSel = null, filtro = 'todas', seccion = 'hero', hoverId = null;
+  let rotY = 0, rotObj = null, velUser = 0, giroEmb = 0;
+  const cache = {}; let activo = null, saliendo = [];
+  let tuboRuta = null; const cometa = [0, 1, 2, 3].map(i => { const s = brillo(0xfff3c4, 1.1 - i * 0.2, 0); torre.add(s); return s; });
+
+  function emblemaDe(id) {
+    if (cache[id]) return cache[id];
+    const n = porId[id], fab = EMBLEMAS[n.t.emblema] || EMBLEMAS.integracion;
+    const e = fab(n.col.clone(), { nucleo: id === 'express' ? 'octa' : id === 'spring' ? 'dodeca' : 'ico' });
+    e.pivote = new THREE.Group(); e.pivote.add(e.g); e.t = 0; e.abre = 0;
+    return (cache[id] = e);
+  }
+  function soltarEmblema() { if (activo) { saliendo.push(activo); activo = null; } }
+  function quitarRuta() { if (tuboRuta) { torre.remove(tuboRuta); tuboRuta.geometry.dispose(); tuboRuta = null; } cometa.forEach(s => { s.material.opacity = 0; }); nodos.forEach(n => ponerEtiqueta(n, n.t.corto)); }
+  function luces() {
+    if (modo !== 'vista') return;
+    nodos.forEach(n => { const ok = filtro === 'todas' || n.t.area === filtro; n.luzT = ok ? 1 : 0.14; n.escT = ok ? 1 : 0.7; });
+    luzPT = aristas.map(a => (filtro === 'todas' || porId[a.a].t.area === filtro || porId[a.b].t.area === filtro) ? 1 : 0.1);
+  }
+  function vista() {
+    soltarEmblema(); quitarRuta(); resaltarAristas([]);
+    modo = 'vista'; sel = null; rutaSel = null; rotObj = null; giroEmb = 0;
+    luces(); apuntarSeccion();
+  }
+  function enfocarTaller(id) {
+    const n = porId[id]; if (!n) return;
+    if (sel === id && modo === 'taller' && activo) return;
+    soltarEmblema(); quitarRuta();
+    modo = 'taller'; sel = id; rutaSel = null; giroEmb = 0;
+    const e = emblemaDe(id); saliendo = saliendo.filter(x => x !== e); e.pivote.removeFromParent(); e.abre = 0; activo = e;
+    if (id === 'integracion') { scene.add(e.pivote); e.pivote.position.copy(puntoTaller(id)); rotObj = rotY; }
+    else {
+      n.cont.add(e.pivote); tmp.set(n.base.x, 0, n.base.z).normalize().multiplyScalar(2.5); e.pivote.position.set(tmp.x, 0.3, tmp.z);
+      rotObj = rotY + normAng(Math.atan2(n.base.z, n.base.x) - Math.PI / 2 - rotY);
+    }
+    const con = new Set([id, ...n.t.conexiones]);
+    nodos.forEach(m => { m.luzT = con.has(m.t.id) ? 1 : 0.12; m.escT = con.has(m.t.id) ? 1.15 : 0.8; });
+    resaltarAristas(aristas.filter(a => a.a === id || a.b === id));
+    luzPT = aristas.map(a => (a.a === id || a.b === id) ? 1.1 : 0.06);
+    foco.color.copy(n.col);
+    reapuntar();
+  }
+  function enfocarRuta(id) {
+    const r = DATOS.rutas.find(x => x.id === id); if (!r) return;
+    soltarEmblema(); quitarRuta(); resaltarAristas([]);
+    modo = 'ruta'; rutaSel = id; sel = null; rotObj = null;
+    const ids = [...r.talleres, 'integracion'];
+    const curva = new THREE.CatmullRomCurve3(ids.map(i => porId[i].base.clone()), false, 'centripetal');
+    const geo = new THREE.TubeGeometry(curva, ids.length * 44, 0.06, 8, false);
+    tuboRuta = new THREE.Mesh(geo, mLuz(0xfff3c4, 0.85)); tuboRuta.userData = { curva, total: geo.index.count, prog: reducir ? 1 : 0 }; geo.setDrawRange(0, 0); torre.add(tuboRuta);
+    const set = new Set(ids);
+    nodos.forEach(m => { m.luzT = set.has(m.t.id) ? 1 : 0.1; m.escT = set.has(m.t.id) ? 1.3 : 0.75; });
+    ids.forEach((i, k) => ponerEtiqueta(porId[i], i === 'integracion' ? '<b>★</b>' + porId[i].t.corto : `<b>${k + 1}</b>` + porId[i].t.corto));
+    luzPT = aristas.map(() => 0.08);
+    reapuntar();
+  }
+
+  // ---------- interacción ----------
+  const rayo = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function nodoEn(x, y) {
+    const r = lienzo.getBoundingClientRect();
+    ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
+    rayo.setFromCamera(ndc, camera);
+    const hits = rayo.intersectObjects(nodos.filter(n => n.oculto < 0.5 && n.luz > 0.3).map(n => n.toque), false);
+    return hits.length ? porId[hits[0].object.userData.id] : null;
+  }
+  let arrastre = null;
+  lienzo.addEventListener('pointerdown', e => { if (e.button !== 0) return; arrastre = { id: e.pointerId, x: e.clientX, x0: e.clientX, y0: e.clientY, t0: performance.now(), tu: performance.now(), movido: false }; });
+  addEventListener('pointermove', e => {
+    if (arrastre && e.pointerId === arrastre.id) {
+      const dx = e.clientX - arrastre.x, ahora = performance.now(), dtm = Math.max(8, ahora - arrastre.tu) / 1000;
+      arrastre.x = e.clientX; arrastre.tu = ahora;
+      if (Math.abs(e.clientX - arrastre.x0) > 6 || Math.abs(e.clientY - arrastre.y0) > 6) { arrastre.movido = true; lienzo.classList.add('arrastrando'); }
+      if (modo === 'taller') giroEmb += dx * 0.012;
+      else { rotY += dx * 0.0065; velUser = (dx * 0.0065) / dtm; if (rotObj !== null) rotObj = null; }
+    } else if (e.pointerType === 'mouse' && e.target === lienzo) {
+      const n = nodoEn(e.clientX, e.clientY), id = n ? n.t.id : null;
+      if (id !== hoverId) { hoverId = id; lienzo.style.cursor = id ? 'pointer' : ''; }
+    }
+  });
+  const soltar = e => {
+    if (!arrastre || e.pointerId !== arrastre.id) return;
+    const toque = !arrastre.movido && performance.now() - arrastre.t0 < 500 && e.type === 'pointerup';
+    arrastre = null; lienzo.classList.remove('arrastrando');
+    if (toque) { const n = nodoEn(e.clientX, e.clientY); if (n && window.Aula) window.Aula.abrir('taller', n.t.id); }
+  };
+  addEventListener('pointerup', soltar); addEventListener('pointercancel', soltar);
+  lienzo.addEventListener('mouseleave', () => { hoverId = null; });
+
+  addEventListener('aula:seccion', e => { seccion = e.detail.cam; if (modo === 'vista') apuntarSeccion(); });
+  addEventListener('aula:abrir', e => { const { tipo, id } = e.detail; if (tipo === 'taller') enfocarTaller(id); else enfocarRuta(id); setTimeout(reapuntar, 60); setTimeout(reapuntar, 450); });
+  addEventListener('aula:cerrar', vista);
+  addEventListener('aula:filtro', e => { filtro = e.detail.area; luces(); });
+
+  function tam() {
+    const w = innerWidth, h = lienzo.clientHeight || innerHeight;
+    if (W > 1 && Math.abs(w - W) < 1 && Math.abs(h - H) < 140) return;
+    W = w; H = h; renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); reapuntar();
+  }
+  addEventListener('resize', tam); tam();
+
+  // estado inicial que dejó la interfaz
+  const est = window.AulaEstado || {};
+  seccion = est.seccion || 'hero'; filtro = est.filtro || 'todas';
+  luces(); apuntarSeccion();
+  if (est.abierto) { if (est.abierto.tipo === 'taller') enfocarTaller(est.abierto.id); else enfocarRuta(est.abierto.id); setTimeout(reapuntar, 450); }
+
+  // ---------- etiquetas ----------
+  function visibles() {
+    const s = new Set();
+    if (modo === 'taller') { if (W >= 980) porId[sel].t.conexiones.forEach(i => s.add(i)); }
+    else if (modo === 'ruta') { DATOS.rutas.find(x => x.id === rutaSel).talleres.forEach(i => s.add(i)); s.add('integracion'); }
+    else {
+      const L = { como: 1, n1: 1, n2: 2, n3: 3 }[seccion];
+      if (L) nodos.forEach(n => { if (n.t.nivel === L && n.t.id !== 'integracion' && (filtro === 'todas' || n.t.area === filtro)) s.add(n.t.id); });
+      if (seccion === 'n3' || seccion === 'final') s.add('integracion');
+      if (hoverId) s.add(hoverId);
+    }
+    return s;
+  }
+  function etiquetas() {
+    const vis = introListo ? visibles() : new Set(), z = zonaLibre(modo === 'vista' ? (PUNTOS[seccion] || {}).zona : null);
+    for (const n of nodos) {
+      let op = 0;
+      if (vis.has(n.t.id)) {
+        n.cont.getWorldPosition(tmp); const frente = tmp.z > -1.5; tmp.project(camera);
+        const x = (tmp.x * 0.5 + 0.5) * W, y = (-tmp.y * 0.5 + 0.5) * H;
+        if (tmp.z < 1 && x > 4 && x < W - 4 && y > z.y0 + 6 && y < z.y1 - 18) {
+          if (!n.etqAncho) n.etqAncho = n.etq.offsetWidth || 80;
+          const lx = x + 16 + n.etqAncho > W - 8 ? x - 16 - n.etqAncho : x + 16;
+          n.etq.style.transform = `translate3d(${lx.toFixed(1)}px,${(y - 11).toFixed(1)}px,0)`;
+          op = frente ? 1 : 0.4;
+        }
+      }
+      if (op !== n.etqOp) { n.etq.style.opacity = op; n.etqOp = op; }
+    }
+    const verNivel = modo === 'vista' && introListo && ['hero', 'como', 'n1', 'n2', 'n3', 'rutas'].includes(seccion);
+    etqNivel.forEach(o => {
+      let op = 0;
+      if (verNivel && (seccion === 'hero' || seccion === 'rutas' || { como: 1, n1: 1, n2: 2, n3: 3 }[seccion] === o.L)) {
+        tmp.set(0, NIV[o.L].y, NIV[o.L].r + 0.9).project(camera);
+        const x = (tmp.x * 0.5 + 0.5) * W, y = (-tmp.y * 0.5 + 0.5) * H;
+        if (tmp.z < 1 && y > z.y0 + 6 && y < z.y1 - 10) { o.e.style.transform = `translate3d(${(x - 40).toFixed(1)}px,${(y + 10).toFixed(1)}px,0)`; op = 1; }
+      }
+      if (op !== o.op) { o.e.style.opacity = op; o.op = op; }
+    });
+  }
+
+  // ---------- ciclo ----------
+  let tiempo = 0, introT = reducir ? 99 : 0, introListo = reducir;
+  const reloj = new THREE.Clock();
+  let muestras = 0, suma = 0, medido = false;
+  function cuadro() {
+    const dt = Math.min(0.05, reloj.getDelta()); tiempo += dt; introT += dt;
+    if (!introListo && introT > 3.4) introListo = true;
+    if (rotObj !== null) rotY += (rotObj - rotY) * (1 - Math.exp(-dt * 3.2));
+    else if (!arrastre) { rotY += ((reducir ? 0 : 0.045) + velUser) * dt; velUser *= Math.exp(-dt * 2.4); }
+    torre.rotation.y = rotY;
+
+    const k = 1 - Math.exp(-dt * 5);
+    for (const n of nodos) {
+      const p = reducir ? 1 : salida(tramo(introT, n.retraso, n.retraso + 1.6));
+      if (p < 1) n.cont.position.copy(n.de).lerp(n.base, p); else if (n.cont.position.x !== n.base.x) n.cont.position.copy(n.base);
+      n.luz = lerp(n.luz, n.luzT * Math.min(1, p * 1.5), k); n.esc = lerp(n.esc, n.escT, k);
+      n.oculto = lerp(n.oculto, modo === 'taller' && n.t.id === sel ? 1 : 0, 1 - Math.exp(-dt * 8));
+      n.vis.position.y = reducir ? 0 : Math.sin(tiempo * 0.9 + n.fase) * 0.07;
+      n.vis.rotation.y += dt * 0.5; n.vis.rotation.x = Math.sin(tiempo * 0.3 + n.fase) * 0.35;
+      const hov = n.t.id === hoverId ? 1.35 : 1;
+      n.vis.scale.setScalar(Math.max(0.001, n.esc * hov * (1 - n.oculto) * (0.3 + 0.7 * p)));
+      n.alambre.material.opacity = 0.95 * n.luz; n.nucleo.material.opacity = n.luz; n.halo.material.opacity = (0.45 + (hov > 1 ? 0.3 : 0)) * n.luz;
+      n.anillos.forEach((a, i) => { a.rotation.z = tiempo * (0.3 + i * 0.2) * (i ? -1 : 1); a.material.opacity = (0.7 - i * 0.3) * n.luz; });
+    }
+    const listo = tramo(introT, 2.2, 3.6);
+    matAristas.opacity = lerp(matAristas.opacity, (modo === 'vista' ? (filtro === 'todas' ? 0.3 : 0.14) : 0.05) * listo, k);
+    matAlto.opacity = lerp(matAlto.opacity, modo === 'taller' ? 0.32 : 0, k);
+    matP.opacity = listo;
+    for (let i = 0; i < NP; i++) {
+      const e = aristas[i], u = fract(tiempo * velP[i] + faseP[i]);
+      luzP[i] = lerp(luzP[i], luzPT[i], k);
+      e.curva.getPoint(u, tmp); posP[i * 3] = tmp.x; posP[i * 3 + 1] = tmp.y; posP[i * 3 + 2] = tmp.z;
+      const b = luzP[i] * Math.sin(u * Math.PI);
+      colP[i * 3] = lerp(e.ca.r, e.cb.r, u) * b; colP[i * 3 + 1] = lerp(e.ca.g, e.cb.g, u) * b; colP[i * 3 + 2] = lerp(e.ca.b, e.cb.b, u) * b;
+    }
+    geoP.attributes.position.needsUpdate = true; geoP.attributes.color.needsUpdate = true;
+    for (let i = 0; i < NS; i++) { const u = fract(tiempo * 0.05 + faseS[i]); posS[i * 3] = Math.sin(i * 7.3) * 0.12; posS[i * 3 + 1] = lerp(NIV[1].y - 1.4, CORONA.y - 0.7, u); posS[i * 3 + 2] = Math.cos(i * 3.1) * 0.12; }
+    geoS.attributes.position.needsUpdate = true; subida.material.opacity = 0.7 * listo * (modo === 'vista' ? 1 : 0.3);
+    estrellas.material.opacity = Math.min(1, introT / 1.5) * 0.9; estrellas.rotation.y = tiempo * 0.004;
+
+    if (tuboRuta) {
+      const u = tuboRuta.userData; u.prog = Math.min(1, u.prog + dt / 1.8);
+      tuboRuta.geometry.setDrawRange(0, Math.floor((u.total * suave(u.prog)) / 3) * 3);
+      cometa.forEach((s, i) => { const f = fract(tiempo * 0.16) * suave(u.prog) - i * 0.012; if (f > 0) { u.curva.getPoint(f, s.position); s.material.opacity = 0.95 - i * 0.2; } else s.material.opacity = 0; });
+    }
+    if (activo) {
+      const e = activo; e.abre = Math.min(1, e.abre + dt / 0.8);
+      const v = reducir ? 0.35 : 1; e.t += dt * v; e.up(e.t, dt * v);
+      e.pivote.scale.setScalar(Math.max(0.001, reducir ? 1 : rebote(e.abre)));
+      e.pivote.rotation.y = (e.pivote.parent === scene ? 0 : -torre.rotation.y) + giroEmb;
+      foco.intensity = lerp(foco.intensity, 40, k); e.pivote.getWorldPosition(tmp); foco.position.set(tmp.x + 1.5, tmp.y + 2.2, tmp.z + 3);
+    } else foco.intensity = lerp(foco.intensity, 0, k);
+    saliendo = saliendo.filter(e => { e.abre -= dt / 0.3; e.pivote.scale.setScalar(Math.max(0.001, e.abre)); if (e.abre <= 0) { e.pivote.removeFromParent(); return false; } return true; });
+
+    moverCamara(dt);
+    renderer.render(scene, camera);
+    etiquetas();
+    if (!medido && introListo) { suma += dt; muestras++; if (muestras === 90) { medido = true; if (suma / muestras > 1 / 32 && dpr > 1) { dpr = 1; renderer.setPixelRatio(1); renderer.setSize(W, H, false); } } }
+  }
+  renderer.setAnimationLoop(cuadro);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) renderer.setAnimationLoop(null); else { reloj.getDelta(); renderer.setAnimationLoop(cuadro); } });
+  window.Escena = { porId, enfocarTaller, enfocarRuta, vista, get modo() { return modo; } };
+})();
+
+</script>
+</body>
+</html>
