@@ -8,6 +8,24 @@
 1. Abre index.html con un editor de texto y busca TU-INVITACION. Cámbialo por tu invitación permanente de Discord (Invitar > Editar enlace > Nunca expira).
 2. Para activar el botón de WhatsApp, busca "whatsapp":"" y pon tu número con código de país, solo dígitos, por ejemplo "593991234567".
 
+## Videos de cada taller
+
+Cada taller tiene un campo "video" vacío en el bloque de datos de index.html. Mientras esté vacío, la hoja del taller no muestra nada.
+
+1. Sube el video a YouTube, como Short o como video "No listado".
+2. Busca el taller por su id, por ejemplo "id": "github", y pega el enlace en su "video":
+   - Video vertical (Short): "video": "https://youtube.com/shorts/ABCDEFGHIJK"
+   - Video horizontal: "video": "https://youtu.be/ABCDEFGHIJK"
+3. Guarda y sube index.html.
+
+Si el enlace es de un Short, el reproductor sale vertical. Cualquier otro enlace de YouTube sale horizontal.
+
+Para que la página no se trabe:
+
+- La hoja muestra solo la miniatura del video. YouTube se carga cuando alguien la toca.
+- Mientras el video está abierto, la torre 3D se detiene. Vuelve a moverse al cerrar la hoja o pasar a otro taller.
+- Al cerrar la hoja o pasar a otro taller, el reproductor se borra y el video deja de sonar.
+
 ## Publicarla gratis en GitHub Pages
 
 1. Crea un repositorio público, por ejemplo aula5.
